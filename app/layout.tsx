@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vet Alert Brasil | Alertas veterinários rápidos",
+  title: "Vet Alert Brasil | Inteligência de alertas veterinários",
   description:
-    "Crie alertas veterinários claros e rápidos para conectar tutores e profissionais em situações urgentes no Brasil.",
+    "Plataforma de inteligência em tempo real para veterinários compartilharem e acompanharem alertas estruturados em todo o Brasil.",
   applicationName: "Vet Alert Brasil",
 };
 
