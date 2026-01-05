@@ -7,7 +7,7 @@ export function Footer() {
         <div>
           <div className="text-base font-semibold text-slate-800">Vet Alert Brasil</div>
           <p className="mt-1 max-w-xl text-sm text-slate-600">
-            Construindo um caminho seguro para conectar tutores e veterinários com clareza e cuidado.
+            Inteligência colaborativa para veterinários: sinais curtos, anonimato preservado e foco em padrões.
           </p>
         </div>
         <div className="flex gap-4 text-sm font-medium text-slate-700">
