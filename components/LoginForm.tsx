@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { FirebaseError } from "firebase/app";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, UserCredential } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "./Button";
@@ -67,14 +67,17 @@ export function LoginForm() {
     const crmv = `${crmvUF}-${crmvNumero}`;
 
     try {
-      const result = await signInWithEmailAndPassword(auth, email, senha).catch(
-        async (authError: unknown) => {
-          if (authError instanceof FirebaseError && authError.code === "auth/user-not-found") {
-            return createUserWithEmailAndPassword(auth, email, senha);
-          }
+      let result: UserCredential;
+      try {
+        result = await signInWithEmailAndPassword(auth, email, senha);
+      } catch (authError) {
+        console.error("Firebase Auth erro (login)", authError);
+        if (authError instanceof FirebaseError && authError.code === "auth/user-not-found") {
+          result = await createUserWithEmailAndPassword(auth, email, senha);
+        } else {
           throw authError;
-        },
-      );
+        }
+      }
 
       const user = result.user;
 
