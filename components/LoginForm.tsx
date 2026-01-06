@@ -72,7 +72,10 @@ export function LoginForm() {
         result = await signInWithEmailAndPassword(auth, email, senha);
       } catch (authError) {
         console.error("Firebase Auth erro (login)", authError);
-        if (authError instanceof FirebaseError && authError.code === "auth/user-not-found") {
+        if (
+          authError instanceof FirebaseError &&
+          ["auth/user-not-found", "auth/invalid-credential", "auth/invalid-login-credentials"].includes(authError.code)
+        ) {
           result = await createUserWithEmailAndPassword(auth, email, senha);
         } else {
           throw authError;
