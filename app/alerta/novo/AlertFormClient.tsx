@@ -105,6 +105,59 @@ const alertCategories = [
 const herdCounts = ["1", "2 a 5", "6 a 20", "Mais de 20 (surto)"];
 const severityLevels = ["Atenção", "Preocupante", "Urgente"];
 
+const detailOptions: Record<string, string[]> = {
+  "Suspeita de intoxicação": [
+    "Ração concentrada",
+    "Silagem / feno / pasto",
+    "Água",
+    "Agrotóxico",
+    "Produto químico",
+    "Plantas tóxicas",
+    "Medicamento",
+    "Outro agente",
+  ],
+  "Contaminação ou mudança abrupta de ração/alimento": [
+    "Lote de ração",
+    "Feno / volumoso",
+    "Mistura caseira",
+    "Suplemento",
+    "Nova formulação",
+  ],
+  "Contaminação de água": [
+    "Poço",
+    "Fonte superficial",
+    "Tanque / reservatório",
+    "Distribuição local",
+    "Outra",
+  ],
+  "Pulverização aérea próxima": [
+    "Herbicida",
+    "Inseticida",
+    "Fungicida",
+    "Produto desconhecido",
+  ],
+  "Queimadas / fumaça": ["Queimada controlada", "Queimada irregular", "Fumaça de longe"],
+  "Enchentes, secas ou eventos climáticos extremos": [
+    "Enchente",
+    "Seca",
+    "Frente fria intensa",
+    "Onda de calor",
+    "Tempestade / granizo",
+  ],
+  "Aumento anormal da mortalidade": ["Mesma propriedade", "Propriedades vizinhas", "Região mais ampla"],
+  "Padrão incomum para a estação": ["Clima atípico", "Pasto incomum", "Insetos / vetores"],
+  "Síndrome digestiva": [
+    "Diarreia",
+    "Diarreia hemorrágica",
+    "Cólica em grupo",
+    "Salivação intensa",
+  ],
+  "Síndrome respiratória": ["Dispneia", "Tosse em grupo", "Secreção nasal"],
+  "Sinais neurológicos": ["Ataxia", "Tremores", "Convulsões", "Paralisia", "Alteração comportamental"],
+  "Lesões cutâneas / teciduais": ["Necrose", "Úlceras", "Edema", "Dermatite"],
+  "Alterações reprodutivas": ["Abortos", "Infertilidade", "Retenção de placenta", "Natimortos"],
+};
+
 const buttonBaseStyles =
   "rounded-xl border text-left text-base transition shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500";
 const buttonUnselected = "border-slate-200 bg-white text-slate-800 hover:border-emerald-200";
@@ -169,6 +222,7 @@ export default function AlertFormClient() {
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
   const [alertGroup, setAlertGroup] = useState(alertCategories[0].group);
+  const [alertDetails, setAlertDetails] = useState<string[]>([]);
   const [herdCount, setHerdCount] = useState("");
   const [severity, setSeverity] = useState("");
   const [state, setState] = useState("RS");
@@ -207,6 +261,15 @@ export default function AlertFormClient() {
 
   const handleSelection = (setter: (value: string) => void) => (value: string) => {
     setter(value);
+    setErrors([]);
+    if (step < 4) {
+      goNext();
+    }
+  };
+
+  const handleAlertTypeSelect = (value: string) => {
+    setAlertType(value);
+    setAlertDetails([]);
     setErrors([]);
     if (step < 4) {
       goNext();
@@ -316,7 +379,7 @@ export default function AlertFormClient() {
                           ]
                             .filter(Boolean)
                             .join(" ")}
-                          onClick={() => handleSelection(setAlertType)(option)}
+                          onClick={() => handleAlertTypeSelect(option)}
                           aria-pressed={selected}
                         >
                           <span className="block font-semibold">{option}</span>
@@ -324,6 +387,41 @@ export default function AlertFormClient() {
                       );
                     })}
                 </div>
+                {detailOptions[alertType]?.length ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Detalhe rápido (opcional)
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {detailOptions[alertType].map((detail) => {
+                        const selected = alertDetails.includes(detail);
+                        return (
+                          <button
+                            key={detail}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-2.5 text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() => {
+                              setAlertDetails((current) =>
+                                current.includes(detail)
+                                  ? current.filter((item) => item !== detail)
+                                  : [...current, detail]
+                              );
+                            }}
+                            aria-pressed={selected}
+                          >
+                            <span className="block font-semibold">{detail}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           )}
@@ -486,6 +584,7 @@ export default function AlertFormClient() {
                 <p className="font-semibold">Revisão rápida</p>
                 <ul className="mt-2 space-y-1">
                   <li>• Sinal: {alertType || "—"}</li>
+                  {alertDetails.length > 0 && <li>• Detalhes: {alertDetails.join(", ")}</li>}
                   <li>• Espécie: {species || "—"}</li>
                   <li>• Nº animais: {herdCount || "—"}</li>
                   <li>• Gravidade: {severity || "—"}</li>
