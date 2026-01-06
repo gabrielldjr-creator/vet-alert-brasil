@@ -52,7 +52,8 @@ export default function NovoAlertaPage() {
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Fluxo de alerta estruturado</p>
         <h1 className="text-3xl font-semibold text-slate-900">Criar alerta veterinário</h1>
         <p className="max-w-3xl text-base text-slate-700">
-          Apenas para veterinários autenticados. A região parte do estado do CRMV e nenhum dado de tutor ou animal é solicitado. O objetivo é sinalizar padrões, não orientar condutas.
+          Apenas para veterinários autenticados. A região parte do estado do CRMV registrado no perfil verificado e nenhum dado de
+          tutor ou animal é solicitado. O objetivo é sinalizar padrões, não orientar condutas.
         </p>
       </div>
 
@@ -71,7 +72,7 @@ export default function NovoAlertaPage() {
               label="Estado (CRMV)"
               defaultValue="RS"
               aria-label="Estado do CRMV"
-              helper="Valor bloqueado pelo login para manter escopo regional."
+              helper="Valor bloqueado pelo perfil verificado para manter escopo regional."
             >
               {states.map((uf) => (
                 <option key={uf} value={uf}>
