@@ -1,10 +1,10 @@
 import { Card } from "../components/Card";
-import { LoginForm } from "../components/LoginForm";
+import { AccessRestricted } from "../components/AccessRestricted";
 
 export const metadata = {
-  title: "Acesso veterinário | Vet Alert Brasil",
+  title: "Acesso restrito | Vet Alert Brasil",
   description:
-    "Login exclusivo para médicos-veterinários. O estado do CRMV define a região padrão do painel e escopo dos alertas.",
+    "Plataforma invite-only para médicos-veterinários. Acesso apenas via link mágico enviado ao e-mail profissional.",
 };
 
 export default function Home() {
@@ -19,7 +19,8 @@ export default function Home() {
             Inteligência epidemiológica regional para veterinários
           </h1>
           <p className="max-w-2xl text-lg text-slate-700">
-            Vet Alert Brasil é uma plataforma restrita a profissionais com CRMV ativo. O estado informado define o escopo inicial do painel e garante que você veja sinais relevantes da sua região.
+            Vet Alert Brasil opera com convites controlados. Não há tela de login: o acesso é concedido apenas pelo link mágico enviado
+            ao e-mail do profissional, mantendo a sessão invisível depois do primeiro acesso.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -29,19 +30,22 @@ export default function Home() {
           </Card>
           <Card className="space-y-2 p-5">
             <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Região primeiro</p>
-            <p className="text-base text-slate-700">O CRMV define o estado padrão. Filtros sempre começam pelo território.</p>
+            <p className="text-base text-slate-700">
+              O CRMV define o estado padrão do painel para filtrar sinais por território antes de qualquer outro critério.
+            </p>
           </Card>
         </div>
         <div className="rounded-2xl bg-slate-900 px-6 py-5 text-slate-50 shadow-lg">
-          <p className="text-lg font-semibold">Preparado para Firebase Auth e Firestore.</p>
+          <p className="text-lg font-semibold">Sessão invisível para convidados.</p>
           <p className="mt-2 text-sm text-slate-100/80">
-            Autenticação por e-mail/senha e consultas futuras serão restritas ao estado do CRMV, permitindo filtros adicionais por cidade, espécie e categoria.
+            O Firebase Auth mantém a sessão ativa em segundo plano após o link mágico inicial. Nenhuma credencial é solicitada nesta
+            interface pública.
           </p>
         </div>
       </section>
 
       <section className="w-full max-w-xl">
-        <LoginForm />
+        <AccessRestricted />
       </section>
     </div>
   );
