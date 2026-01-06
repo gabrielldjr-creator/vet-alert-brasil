@@ -3,7 +3,7 @@ import { Card } from "../../components/Card";
 export const metadata = {
   title: "Privacidade | Vet Alert Brasil",
   description:
-    "Alertas são sinais anônimos e restritos a veterinários autenticados. Estado do CRMV define o escopo regional exibido.",
+    "Alertas são sinais anônimos e restritos a veterinários autenticados via link mágico. Estado do CRMV define o escopo regional exibido.",
 };
 
 export default function PrivacyPage() {
@@ -12,7 +12,8 @@ export default function PrivacyPage() {
       <div className="space-y-3">
         <h1 className="text-3xl font-semibold text-slate-900">Privacidade e LGPD</h1>
         <p className="max-w-3xl text-base text-slate-700">
-          Vet Alert Brasil é exclusivo para médicos-veterinários autenticados. Cada alerta é um sinal anônimo e regionalizado pelo estado do CRMV informado no login.
+          Vet Alert Brasil é exclusivo para médicos-veterinários autenticados com link mágico e perfil validado. Cada alerta é um
+          sinal anônimo e regionalizado pelo estado do CRMV registrado no perfil.
         </p>
       </div>
 
