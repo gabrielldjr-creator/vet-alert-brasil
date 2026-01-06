@@ -1,37 +1,5 @@
-import { Button } from "../components/Button";
 import { Card } from "../components/Card";
-import { Input } from "../components/Input";
-import { Select } from "../components/Select";
-
-const states = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
-];
+import { LoginForm } from "../components/LoginForm";
 
 export const metadata = {
   title: "Acesso veterinário | Vet Alert Brasil",
@@ -73,69 +41,7 @@ export default function Home() {
       </section>
 
       <section className="w-full max-w-xl">
-        <Card className="space-y-5 p-6">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Login</p>
-            <h2 className="text-2xl font-semibold text-slate-900">Identifique-se com seu CRMV</h2>
-            <p className="text-sm text-slate-600">Campos prontos para autenticação por e-mail/senha. Nenhum dado é enviado nesta versão.</p>
-          </div>
-          <form className="space-y-4" aria-label="Formulário de login de veterinários">
-            <Input name="nome" label="Nome completo" autoComplete="name" placeholder="Nome e sobrenome" required />
-            <div className="grid gap-3 sm:grid-cols-[140px,1fr]">
-              <Select
-                name="crmvUF"
-                label="CRMV - Estado"
-                defaultValue=""
-                aria-label="Estado do CRMV"
-                helper="Define a região padrão do painel."
-                required
-              >
-                <option value="" disabled>
-                  Selecione UF
-                </option>
-                {states.map((uf) => (
-                  <option key={uf} value={uf}>
-                    {uf}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                name="crmvNumero"
-                label="CRMV - Número"
-                placeholder="Ex.: 12345"
-                inputMode="numeric"
-                autoComplete="off"
-                helper="Usado para validar registro profissional futuramente."
-                required
-              />
-            </div>
-            <Input
-              name="email"
-              type="email"
-              label="E-mail profissional"
-              placeholder="email@dominio.com"
-              autoComplete="email"
-              required
-            />
-            <Input
-              name="senha"
-              type="password"
-              label="Senha"
-              placeholder="Mínimo 8 caracteres"
-              autoComplete="current-password"
-              required
-            />
-            <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              O estado informado aqui será salvo como região base e aplicado automaticamente ao painel após autenticação.
-            </div>
-            <Button type="submit" className="w-full">
-              Entrar e ir para o painel
-            </Button>
-            <p className="text-xs text-slate-500">
-              Ao continuar, você confirma ser médico-veterinário com CRMV ativo. Nenhuma área pública é exibida além desta página de login.
-            </p>
-          </form>
-        </Card>
+        <LoginForm />
       </section>
     </div>
   );
