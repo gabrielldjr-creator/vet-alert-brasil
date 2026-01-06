@@ -3,7 +3,7 @@ import { Card } from "../../components/Card";
 export const metadata = {
   title: "Sobre | Vet Alert Brasil",
   description:
-    "Plataforma de inteligência epidemiológica exclusiva para veterinários, com escopo regional definido pelo CRMV.",
+    "Plataforma de inteligência epidemiológica exclusiva para veterinários convidados, com escopo regional definido pelo CRMV.",
 };
 
 export default function AboutPage() {
@@ -12,7 +12,8 @@ export default function AboutPage() {
       <div className="space-y-3">
         <h1 className="text-3xl font-semibold text-slate-900">Área restrita a veterinários</h1>
         <p className="max-w-3xl text-base text-slate-700">
-          Vet Alert Brasil entrega sinais agregados para profissionais com CRMV ativo. Não há recomendações clínicas nem acesso público. O estado do CRMV define a região padrão do painel após autenticação.
+          Vet Alert Brasil entrega sinais agregados para profissionais com CRMV ativo e convites válidos. Não há recomendações
+          clínicas nem acesso público. O estado do CRMV define a região padrão do painel após a validação do perfil.
         </p>
       </div>
 
@@ -28,7 +29,7 @@ export default function AboutPage() {
         <Card className="space-y-3 p-6">
           <h2 className="text-xl font-semibold text-slate-900">Próximos passos</h2>
           <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-            <li>Autenticação via Firebase restrita a veterinários com CRMV.</li>
+            <li>Autenticação invisível via Firebase após link mágico enviado ao veterinário convidado.</li>
             <li>Filtros que sempre iniciam por estado e região, depois espécie.</li>
             <li>Detecção de agrupamentos regionais sem dados sensíveis.</li>
           </ul>
