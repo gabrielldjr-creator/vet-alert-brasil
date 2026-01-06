@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { AccessDenied } from "../../components/AccessDenied";
+import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Input } from "../../components/Input";
 import { Select } from "../../components/Select";
 import { categoryOptions, speciesOptions } from "../../lib/alerts/schema";
-import { auth } from "../../lib/firebase";
+import { auth, db } from "../../lib/firebase";
 
 const states = [
   "AC",
@@ -41,30 +43,46 @@ const states = [
 ];
 
 export function DashboardClient() {
-  const router = useRouter();
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [status, setStatus] = useState<"checking" | "restricted" | "denied" | "ready">("checking");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace("/");
+        setStatus("restricted");
         return;
       }
-      setCheckingSession(false);
+
+      try {
+        const profileRef = doc(db, "vetProfiles", user.uid);
+        const profileSnap = await getDoc(profileRef);
+
+        setStatus(profileSnap.exists() ? "ready" : "denied");
+      } catch (error) {
+        console.error("Erro ao verificar perfil do veterinário", error);
+        setStatus("denied");
+      }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, []);
 
-  if (checkingSession) {
+  if (status === "checking") {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <Card className="w-full max-w-md space-y-3 p-6 text-center">
           <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Verificando acesso</p>
-          <p className="text-base text-slate-700">Confirmando sessão do veterinário...</p>
+          <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
         </Card>
       </div>
     );
+  }
+
+  if (status === "restricted") {
+    return <AccessRestricted />;
+  }
+
+  if (status === "denied") {
+    return <AccessDenied />;
   }
 
   return (
@@ -75,13 +93,15 @@ export function DashboardClient() {
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold text-slate-900">Alertas recentes da sua região CRMV</h1>
             <p className="max-w-3xl text-base text-slate-700">
-              Exibição preparada para carregar sinais já filtrados pelo estado informado no login. Filtros adicionais seguem a ordem: região, espécie e tipo de evento.
+              Exibição preparada para carregar sinais já filtrados pelo estado registrado no perfil verificado do veterinário. Filtros
+              adicionais seguem a ordem: região, espécie e tipo de evento.
             </p>
           </div>
           <Button href="/alerta/novo">Registrar novo alerta</Button>
         </div>
         <div className="rounded-xl bg-slate-900 px-5 py-4 text-sm text-slate-50">
-          Sessão restrita a médicos-veterinários. O estado do CRMV define automaticamente o escopo inicial dos alertas exibidos.
+          Sessão restrita a médicos-veterinários convidados. O estado do CRMV define automaticamente o escopo inicial dos alertas
+          exibidos.
         </div>
       </section>
 
@@ -98,7 +118,7 @@ export function DashboardClient() {
                 label="Estado (CRMV)"
                 defaultValue="RS"
                 aria-label="Estado base"
-                helper="Valor padrão vem do CRMV informado no login."
+                helper="Valor padrão vem do CRMV registrado no perfil verificado."
               >
                 {states.map((uf) => (
                   <option key={uf} value={uf}>
