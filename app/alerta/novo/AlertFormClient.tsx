@@ -105,6 +105,31 @@ const alertCategories = [
 const herdCounts = ["1", "2 a 5", "6 a 20", "Mais de 20 (surto)"];
 const severityLevels = ["Atenção", "Preocupante", "Urgente"];
 
+const feedSensitiveAlerts = new Set([
+  "Síndrome digestiva",
+  "Sinais neurológicos",
+  "Alterações reprodutivas",
+  "Morte súbita sem causa aparente",
+]);
+
+const pharmaSensitiveAlerts = new Set([
+  "Sinais neurológicos",
+  "Alterações reprodutivas",
+  "Morte súbita sem causa aparente",
+  "Aumento anormal da mortalidade",
+  "Síndrome neurológica com agressividade",
+  "Síndrome febril com icterícia",
+]);
+
+const environmentalAlerts = new Set([
+  "Suspeita de intoxicação",
+  "Contaminação de água",
+  "Contaminação ou mudança abrupta de ração/alimento",
+  "Pulverização aérea próxima",
+  "Queimadas / fumaça",
+  "Enchentes, secas ou eventos climáticos extremos",
+]);
+
 const detailOptions: Record<string, string[]> = {
   "Suspeita de intoxicação": [
     "Ração concentrada",
@@ -231,6 +256,16 @@ export default function AlertFormClient() {
   const [locationMessage, setLocationMessage] = useState("Detectando região...");
   const [isDetecting, setIsDetecting] = useState(false);
   const [notes, setNotes] = useState("");
+  const [eventOnset, setEventOnset] = useState("");
+  const [recentChanges, setRecentChanges] = useState("");
+  const [feedChange, setFeedChange] = useState("");
+  const [feedType, setFeedType] = useState<string[]>([]);
+  const [feedOrigin, setFeedOrigin] = useState("");
+  const [drugExposure, setDrugExposure] = useState("");
+  const [drugCategory, setDrugCategory] = useState<string[]>([]);
+  const [drugInterval, setDrugInterval] = useState("");
+  const [environmentSignals, setEnvironmentSignals] = useState<string[]>([]);
+  const [regionalPattern, setRegionalPattern] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
@@ -256,13 +291,18 @@ export default function AlertFormClient() {
     detectRegion();
   }, [detectRegion]);
 
-  const goNext = () => setStep((current) => Math.min(current + 1, 4));
+  const showsFeedModule = feedSensitiveAlerts.has(alertType);
+  const showsPharmaModule = pharmaSensitiveAlerts.has(alertType);
+  const showsEnvironmentalModule =
+    environmentalAlerts.has(alertType) || alertGroup === "Ambientais / Toxicológicos";
+
+  const goNext = () => setStep((current) => Math.min(current + 1, 5));
   const goBack = () => setStep((current) => Math.max(current - 1, 0));
 
   const handleSelection = (setter: (value: string) => void) => (value: string) => {
     setter(value);
     setErrors([]);
-    if (step < 4) {
+    if (step < 5) {
       goNext();
     }
   };
@@ -270,6 +310,13 @@ export default function AlertFormClient() {
   const handleAlertTypeSelect = (value: string) => {
     setAlertType(value);
     setAlertDetails([]);
+    setFeedChange("");
+    setFeedType([]);
+    setFeedOrigin("");
+    setDrugExposure("");
+    setDrugCategory([]);
+    setDrugInterval("");
+    setEnvironmentSignals([]);
     setErrors([]);
   };
 
@@ -302,6 +349,16 @@ export default function AlertFormClient() {
 
     if (missing.length === 0) {
       setSubmitted(true);
+      setEventOnset("");
+      setRecentChanges("");
+      setFeedChange("");
+      setFeedType([]);
+      setFeedOrigin("");
+      setDrugExposure("");
+      setDrugCategory([]);
+      setDrugInterval("");
+      setEnvironmentSignals([]);
+      setRegionalPattern("");
       setStep(0);
       setTimeout(() => setSubmitted(false), 5000);
     }
@@ -318,9 +375,9 @@ export default function AlertFormClient() {
       <Card className="p-6 shadow-sm">
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
-            <span>Passo {step + 1} de 5</span>
+            <span>Passo {step + 1} de 6</span>
             <div className="flex gap-2" aria-hidden>
-              {[0, 1, 2, 3, 4].map((index) => (
+              {[0, 1, 2, 3, 4, 5].map((index) => (
                 <span
                   key={index}
                   className={`h-1 w-10 rounded-full transition ${
@@ -498,6 +555,318 @@ export default function AlertFormClient() {
           {step === 4 && (
             <div className="space-y-5">
               <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Contexto crítico (rápido)</p>
+                <p className="text-sm text-slate-600">
+                  Micro-perguntas condicionais para capturar causa sem digitação.
+                </p>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-900">Linha do tempo</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {["Súbito", "Progressivo"].map((option) => {
+                      const selected = eventOnset === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          className={[
+                            buttonBaseStyles,
+                            selected ? buttonSelected : buttonUnselected,
+                            "p-3 text-sm sm:text-base",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => setEventOnset(option)}
+                          aria-pressed={selected}
+                        >
+                          <span className="font-semibold">{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {["Últimas 72h", "Últimos 7 dias", "Últimos 30 dias", "Nenhuma mudança recente"].map(
+                      (option) => {
+                        const selected = recentChanges === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-3 text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() => setRecentChanges(option)}
+                            aria-pressed={selected}
+                          >
+                            <span className="font-semibold">{option}</span>
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+
+                {showsEnvironmentalModule && (
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-900">Exposição ambiental</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {[
+                        "Nova pastagem",
+                        "Acesso a lixo / resíduos",
+                        "Proximidade de atividade agrícola",
+                        "Mudança de fonte de água",
+                        "Evento climático extremo recente",
+                      ].map((signal) => {
+                        const selected = environmentSignals.includes(signal);
+                        return (
+                          <button
+                            key={signal}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-3 text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() =>
+                              setEnvironmentSignals((current) =>
+                                current.includes(signal)
+                                  ? current.filter((item) => item !== signal)
+                                  : [...current, signal]
+                              )
+                            }
+                            aria-pressed={selected}
+                          >
+                            <span className="font-semibold">{signal}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {showsFeedModule && (
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-slate-900">Exposição alimentar</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {["Nenhuma mudança", "Nova ração", "Novo lote", "Novo fornecedor", "Novo feno / volumoso"].map(
+                          (option) => {
+                            const selected = feedChange === option;
+                            return (
+                              <button
+                                key={option}
+                                type="button"
+                                className={[
+                                  buttonBaseStyles,
+                                  selected ? buttonSelected : buttonUnselected,
+                                  "p-3 text-sm sm:text-base",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                                onClick={() => setFeedChange(option)}
+                                aria-pressed={selected}
+                              >
+                                <span className="font-semibold">{option}</span>
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tipo de alimentação</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {["Ração comercial", "Silagem", "Feno", "Pastagem", "Suplemento"].map((option) => {
+                          const selected = feedType.includes(option);
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              className={[
+                                buttonBaseStyles,
+                                selected ? buttonSelected : buttonUnselected,
+                                "p-3 text-sm sm:text-base",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              onClick={() =>
+                                setFeedType((current) =>
+                                  current.includes(option)
+                                    ? current.filter((item) => item !== option)
+                                    : [...current, option]
+                                )
+                              }
+                              aria-pressed={selected}
+                            >
+                              <span className="font-semibold">{option}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Origem</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {["Marca conhecida", "Origem desconhecida / a granel / informal"].map((option) => {
+                          const selected = feedOrigin === option;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              className={[
+                                buttonBaseStyles,
+                                selected ? buttonSelected : buttonUnselected,
+                                "p-3 text-sm sm:text-base",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              onClick={() => setFeedOrigin(option)}
+                              aria-pressed={selected}
+                            >
+                              <span className="font-semibold">{option}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {showsPharmaModule && (
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-900">Medicamentos / vacinas</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {["Sim", "Não", "Desconhecido"].map((option) => {
+                        const selected = drugExposure === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-3 text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() => setDrugExposure(option)}
+                            aria-pressed={selected}
+                          >
+                            <span className="font-semibold">{option}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {drugExposure === "Sim" && (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Qual categoria?</p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {["Antibiótico", "Antiparasitário", "Anti-inflamatório", "Vacina", "Outro"].map(
+                              (option) => {
+                                const selected = drugCategory.includes(option);
+                                return (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    className={[
+                                      buttonBaseStyles,
+                                      selected ? buttonSelected : buttonUnselected,
+                                      "p-3 text-sm sm:text-base",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ")}
+                                    onClick={() =>
+                                      setDrugCategory((current) =>
+                                        current.includes(option)
+                                          ? current.filter((item) => item !== option)
+                                          : [...current, option]
+                                      )
+                                    }
+                                    aria-pressed={selected}
+                                  >
+                                    <span className="font-semibold">{option}</span>
+                                  </button>
+                                );
+                              }
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Intervalo</p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {["< 24h", "1–3 dias", "4–14 dias", "> 14 dias"].map((option) => {
+                              const selected = drugInterval === option;
+                              return (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  className={[
+                                    buttonBaseStyles,
+                                    selected ? buttonSelected : buttonUnselected,
+                                    "p-3 text-sm sm:text-base",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                  onClick={() => setDrugInterval(option)}
+                                  aria-pressed={selected}
+                                >
+                                  <span className="font-semibold">{option}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-900">Padrão regional</p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {["Sim", "Não", "Desconhecido"].map((option) => {
+                      const selected = regionalPattern === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          className={[
+                            buttonBaseStyles,
+                            selected ? buttonSelected : buttonUnselected,
+                            "p-3 text-sm sm:text-base",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => setRegionalPattern(option)}
+                          aria-pressed={selected}
+                        >
+                          <span className="font-semibold">{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-600">Inteligência de cluster sem pedir diagnóstico.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="space-y-5">
+              <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Região e envio</p>
                 <p className="text-sm text-slate-600">Somente país + estado, sem endereço.</p>
               </div>
@@ -585,6 +954,16 @@ export default function AlertFormClient() {
                   <li>• Espécie: {species || "—"}</li>
                   <li>• Nº animais: {herdCount || "—"}</li>
                   <li>• Gravidade: {severity || "—"}</li>
+                  {eventOnset && <li>• Início: {eventOnset}</li>}
+                  {recentChanges && <li>• Mudança recente: {recentChanges}</li>}
+                  {feedChange && <li>• Alimentação: {feedChange}</li>}
+                  {feedType.length > 0 && <li>• Tipo de alimento: {feedType.join(", ")}</li>}
+                  {feedOrigin && <li>• Origem: {feedOrigin}</li>}
+                  {drugExposure && <li>• Medicamentos/vacinas: {drugExposure}</li>}
+                  {drugCategory.length > 0 && <li>• Categoria: {drugCategory.join(", ")}</li>}
+                  {drugInterval && <li>• Intervalo: {drugInterval}</li>}
+                  {environmentSignals.length > 0 && <li>• Ambiental: {environmentSignals.join(", ")}</li>}
+                  {regionalPattern && <li>• Casos semelhantes: {regionalPattern}</li>}
                   <li>
                     • Região: {country} / {state}
                   </li>
@@ -624,7 +1003,7 @@ export default function AlertFormClient() {
               </Button>
               <span>Fluxo concluído em menos de 60s.</span>
             </div>
-            {step < 4 ? (
+            {step < 5 ? (
               <Button type="button" className="w-full sm:w-auto px-6 py-3 text-base" onClick={handleNext}>
                 Próximo
               </Button>
