@@ -271,9 +271,6 @@ export default function AlertFormClient() {
     setAlertType(value);
     setAlertDetails([]);
     setErrors([]);
-    if (step < 4) {
-      goNext();
-    }
   };
 
   const validateCurrentStep = () => {
