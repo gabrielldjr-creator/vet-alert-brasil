@@ -7,19 +7,13 @@ export function Footer() {
         <div>
           <div className="text-base font-semibold text-slate-800">Vet Alert Brasil</div>
           <p className="mt-1 max-w-xl text-sm text-slate-600">
-            Inteligência colaborativa para veterinários: sinais curtos, anonimato preservado e foco em padrões.
+            Plataforma de inteligência regional exclusiva para médicos-veterinários. Sinais agregados, nenhuma recomendação clínica.
           </p>
         </div>
-        <div className="flex gap-4 text-sm font-medium text-slate-700">
-          <Link className="hover:text-emerald-700" href="/sobre">
-            Sobre
-          </Link>
-          <Link className="hover:text-emerald-700" href="/privacidade">
-            Privacidade
-          </Link>
-          <Link className="hover:text-emerald-700" href="/alerta/novo">
-            Criar alerta
-          </Link>
+        <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-700">
+          <Link className="hover:text-emerald-700" href="/">Acessar</Link>
+          <Link className="hover:text-emerald-700" href="/dashboard">Painel</Link>
+          <Link className="hover:text-emerald-700" href="/privacidade">Privacidade</Link>
         </div>
       </div>
     </footer>

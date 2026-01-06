@@ -1,9 +1,7 @@
 import Link from "next/link";
 
 const links = [
-  { href: "/", label: "Início" },
-  { href: "/alerta/novo", label: "Criar alerta" },
-  { href: "/sobre", label: "Sobre" },
+  { href: "/dashboard", label: "Painel" },
 ];
 
 export function Header() {
@@ -29,12 +27,15 @@ export function Header() {
               {link.label}
             </Link>
           ))}
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
+            Acesso restrito a veterinários
+          </span>
         </nav>
         <Link
-          href="/alerta/novo"
-          className="hidden rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:inline-flex"
+          href="/"
+          className="hidden rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 sm:inline-flex"
         >
-          Novo alerta
+          Entrar
         </Link>
       </div>
     </header>

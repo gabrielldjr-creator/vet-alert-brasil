@@ -9,10 +9,40 @@ import {
   speciesOptions,
 } from "../../../lib/alerts/schema";
 
+const states = [
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
+];
+
 export const metadata = {
   title: "Criar alerta estruturado | Vet Alert Brasil",
   description:
-    "Registre um alerta veterinário padronizado. Apenas sinais essenciais, sem dados sensíveis ou decisão clínica.",
+    "Registro restrito a veterinários autenticados. Estrutura curta priorizando região (CRMV), espécie, categoria e fonte suspeita.",
 };
 
 export default function NovoAlertaPage() {
@@ -22,7 +52,7 @@ export default function NovoAlertaPage() {
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Fluxo de alerta estruturado</p>
         <h1 className="text-3xl font-semibold text-slate-900">Criar alerta veterinário</h1>
         <p className="max-w-3xl text-base text-slate-700">
-          Sinais rápidos para inteligência coletiva: espécies, categorias e fontes suspeitas em formato padronizado. Nenhum dado de tutor ou animal é solicitado.
+          Apenas para veterinários autenticados. A região parte do estado do CRMV e nenhum dado de tutor ou animal é solicitado. O objetivo é sinalizar padrões, não orientar condutas.
         </p>
       </div>
 
@@ -32,10 +62,39 @@ export default function NovoAlertaPage() {
             1
           </span>
           <span className="font-semibold text-slate-800">Estruture o sinal</span>
-          <span className="text-slate-500">(nenhum envio automático neste passo)</span>
+          <span className="text-slate-500">Região primeiro, depois espécie e categoria.</span>
         </div>
         <form className="space-y-5">
-          <Select name="especie" label="Espécie" defaultValue="" aria-label="Espécie" helper="Selecione apenas uma espécie por alerta para manter o padrão.">
+          <div className="grid gap-3 sm:grid-cols-[170px,1fr]">
+            <Select
+              name="estado"
+              label="Estado (CRMV)"
+              defaultValue="RS"
+              aria-label="Estado do CRMV"
+              helper="Valor bloqueado pelo login para manter escopo regional."
+            >
+              {states.map((uf) => (
+                <option key={uf} value={uf}>
+                  {uf}
+                </option>
+              ))}
+            </Select>
+            <Input
+              name="regiao"
+              label="Cidade ou referência"
+              placeholder="Ex.: Pelotas (RS) ou região da campanha"
+              autoComplete="off"
+              helper="Regionalização vem antes de espécie ou evento."
+            />
+          </div>
+
+          <Select
+            name="especie"
+            label="Espécie"
+            defaultValue=""
+            aria-label="Espécie"
+            helper="Selecione apenas uma espécie por alerta para manter o padrão."
+          >
             <option value="" disabled>
               Selecione a espécie
             </option>
@@ -46,7 +105,13 @@ export default function NovoAlertaPage() {
             ))}
           </Select>
 
-          <Select name="categoria" label="Categoria do evento" defaultValue="" aria-label="Categoria do evento" helper="Classificação rápida para facilitar agrupamentos futuros.">
+          <Select
+            name="categoria"
+            label="Categoria do evento"
+            defaultValue=""
+            aria-label="Categoria do evento"
+            helper="Classificação rápida para facilitar agrupamentos futuros."
+          >
             <option value="" disabled>
               Escolha a categoria
             </option>
@@ -57,7 +122,13 @@ export default function NovoAlertaPage() {
             ))}
           </Select>
 
-          <Select name="fonte" label="Fonte suspeita" defaultValue="" aria-label="Fonte suspeita" helper="Sem diagnósticos: apenas a melhor suposição do profissional.">
+          <Select
+            name="fonte"
+            label="Fonte suspeita"
+            defaultValue=""
+            aria-label="Fonte suspeita"
+            helper="Sem diagnósticos: apenas a melhor suposição do profissional."
+          >
             <option value="" disabled>
               Escolha a fonte
             </option>
@@ -67,14 +138,6 @@ export default function NovoAlertaPage() {
               </option>
             ))}
           </Select>
-
-          <Input
-            name="regiao"
-            label="Região (município ou referência)"
-            placeholder="Ex.: Pelotas (RS) ou região da campanha"
-            autoComplete="off"
-            helper="Localização aproximada suficiente para mapear padrões."
-          />
 
           <Textarea
             name="nota"
@@ -86,11 +149,11 @@ export default function NovoAlertaPage() {
 
           <div className="flex flex-col gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-semibold">Nenhum dado sensível é coletado.</p>
-            <p className="text-emerald-800">O envio final será ativado apenas após confirmação.</p>
+            <p className="text-emerald-800">O envio final será ativado apenas após autenticação e confirmação.</p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600">Este fluxo foi pensado para ser rápido em campo e preparar clusters automáticos.</p>
+            <p className="text-sm text-slate-600">Fluxo preparado para clusters automáticos por região e tempo.</p>
             <Button type="button" className="w-full sm:w-auto">
               Continuar
             </Button>
