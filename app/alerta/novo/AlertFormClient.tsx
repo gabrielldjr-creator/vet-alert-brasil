@@ -102,8 +102,8 @@ const alertCategories = [
   { group: "Outro", options: ["Outro sinal preocupante (descrição livre)"] },
 ];
 
-const herdCounts = ["1", "2 a 5", "6 a 20", "Mais de 20"];
-const severityLevels = ["Leve", "Moderada", "Grave / urgente"];
+const herdCounts = ["1", "2 a 5", "6 a 20", "Mais de 20 (surto)"];
+const severityLevels = ["Atenção", "Preocupante", "Urgente"];
 
 const buttonBaseStyles =
   "rounded-xl border text-left text-base transition shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500";
@@ -128,10 +128,12 @@ function QuickSelect({
 }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-900">{label}</p>
-        <span className="text-xs font-medium uppercase tracking-wide text-emerald-700">Obrigatório</span>
-      </div>
+      {label ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-slate-900">{label}</p>
+          <span className="text-xs font-medium uppercase tracking-wide text-emerald-700">Obrigatório</span>
+        </div>
+      ) : null}
       <div
         className="grid gap-3"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
@@ -167,7 +169,7 @@ export default function AlertFormClient() {
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
   const [herdCount, setHerdCount] = useState("");
-  const [severity, setSeverity] = useState("Moderada");
+  const [severity, setSeverity] = useState("");
   const [state, setState] = useState("RS");
   const [country, setCountry] = useState("Brasil");
   const [regionReference, setRegionReference] = useState("");
@@ -176,6 +178,7 @@ export default function AlertFormClient() {
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [step, setStep] = useState(0);
 
   const detectRegion = useCallback(async () => {
     setIsDetecting(true);
@@ -198,6 +201,34 @@ export default function AlertFormClient() {
     detectRegion();
   }, [detectRegion]);
 
+  const goNext = () => setStep((current) => Math.min(current + 1, 4));
+  const goBack = () => setStep((current) => Math.max(current - 1, 0));
+
+  const handleSelection = (setter: (value: string) => void) => (value: string) => {
+    setter(value);
+    setErrors([]);
+    if (step < 4) {
+      goNext();
+    }
+  };
+
+  const validateCurrentStep = () => {
+    const missing: string[] = [];
+    if (step === 0 && !alertType) missing.push("Escolha o tipo de alerta");
+    if (step === 1 && !species) missing.push("Selecione a espécie");
+    if (step === 2 && !herdCount) missing.push("Informe número de animais afetados");
+    if (step === 3 && !severity) missing.push("Classifique a gravidade");
+    return missing;
+  };
+
+  const handleNext = () => {
+    const missing = validateCurrentStep();
+    setErrors(missing);
+    if (missing.length === 0) {
+      goNext();
+    }
+  };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const missing: string[] = [];
@@ -210,153 +241,217 @@ export default function AlertFormClient() {
 
     if (missing.length === 0) {
       setSubmitted(true);
+      setStep(0);
       setTimeout(() => setSubmitted(false), 5000);
     }
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Registro único, rápido</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Alerta veterinário</h1>
-        <p className="text-sm text-slate-600">
-          Fluxo direto para vigilância epidemiológica. Sem dados sensíveis, sem diagnóstico.
-        </p>
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Fluxo de campo</p>
+        <h1 className="text-3xl font-semibold text-slate-900">Registrar alerta</h1>
+        <p className="text-sm text-slate-600">Uso móvel, alta visibilidade e zero fricção.</p>
       </div>
 
       <Card className="p-6 shadow-sm">
         <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="grid gap-6 lg:grid-cols-[1.4fr,1fr]">
-            <div className="space-y-6">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <span>Passo {step + 1} de 5</span>
+            <div className="flex gap-2" aria-hidden>
+              {[0, 1, 2, 3, 4].map((index) => (
+                <span
+                  key={index}
+                  className={`h-1 w-10 rounded-full transition ${
+                    step >= index ? "bg-emerald-600" : "bg-slate-200"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {step === 0 && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Tipo de sinal observado</p>
+                <p className="text-sm text-slate-600">Toque e avance automaticamente.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {alertCategories.map((group) => (
+                  <div key={group.group} className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.group}</p>
+                    <div className="grid gap-2">
+                      {group.options.map((option) => {
+                        const selected = alertType === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-3 text-left text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() => handleSelection(setAlertType)(option)}
+                            aria-pressed={selected}
+                          >
+                            <span className="block font-semibold">{option}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Espécie</p>
+                <p className="text-sm text-slate-600">Botões grandes para toque rápido.</p>
+              </div>
               <QuickSelect
-                label="Espécie"
+                label=""
                 options={speciesOptions}
                 value={species}
-                onChange={setSpecies}
+                onChange={handleSelection(setSpecies)}
                 columns={2}
               />
+            </div>
+          )}
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-900">Tipo de alerta</p>
-                  <span className="text-xs font-medium uppercase tracking-wide text-emerald-700">Obrigatório</span>
-                </div>
-                <div className="grid gap-3">
-                  {alertCategories.map((group) => (
-                    <div key={group.group} className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.group}</p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {group.options.map((option) => {
-                          const selected = alertType === option;
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              className={[
-                                buttonBaseStyles,
-                                selected ? buttonSelected : buttonUnselected,
-                                "p-3 text-sm text-left sm:text-base",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                              onClick={() => setAlertType(option)}
-                              aria-pressed={selected}
-                            >
-                              <span className="block font-semibold">{option}</span>
-                              <span className="mt-1 block text-xs text-slate-600">Sinal prioritário para vigilância.</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Número de animais afetados</p>
+                <p className="text-sm text-slate-600">Seleção direta, sem digitação.</p>
               </div>
-
               <QuickSelect
-                label="Número de animais afetados"
+                label=""
                 options={herdCounts}
                 value={herdCount}
-                onChange={setHerdCount}
-                columns={4}
-              />
-
-              <QuickSelect
-                label="Gravidade percebida"
-                options={severityLevels}
-                value={severity}
-                onChange={setSeverity}
-                columns={3}
+                onChange={handleSelection(setHerdCount)}
+                columns={2}
               />
             </div>
+          )}
 
-            <div className="space-y-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Região</p>
-                  <p className="text-xs text-slate-600">Detectamos país e estado. Ajuste só se necessário.</p>
+          {step === 3 && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Gravidade percebida</p>
+                <p className="text-sm text-slate-600">Cores só aqui para foco.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {severityLevels.map((level) => {
+                  const selected = severity === level;
+                  const severityStyles = {
+                    Atenção: "bg-slate-50 border-slate-200 text-slate-900",
+                    Preocupante: "bg-amber-50 border-amber-200 text-amber-900",
+                    Urgente: "bg-red-50 border-red-200 text-red-900",
+                  } as const;
+
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      className={[
+                        "rounded-xl border p-4 text-left text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 sm:text-base",
+                        selected ? "ring-2 ring-emerald-200" : "",
+                        severityStyles[level as keyof typeof severityStyles],
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={() => handleSelection(setSeverity)(level)}
+                      aria-pressed={selected}
+                    >
+                      {level}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-5">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Contexto rápido</p>
+                <p className="text-sm text-slate-600">Região automática, nota opcional.</p>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Região</p>
+                    <p className="text-xs text-slate-600">País e estado apenas.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="px-3 py-2 text-xs"
+                    onClick={detectRegion}
+                    disabled={isDetecting}
+                  >
+                    {isDetecting ? "Detectando..." : "Atualizar"}
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="px-3 py-2 text-xs"
-                  onClick={detectRegion}
-                  disabled={isDetecting}
-                >
-                  {isDetecting ? "Detectando..." : "Atualizar localização"}
-                </Button>
-              </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    name="country"
+                    label="País"
+                    value={country}
+                    onChange={(event) => setCountry(event.target.value)}
+                    autoComplete="country"
+                    helper="Somente nível nacional/regional."
+                    required
+                  />
+                  <Select
+                    name="state"
+                    label="Estado"
+                    value={state}
+                    onChange={(event) => setState(event.target.value)}
+                    aria-label="Estado"
+                    helper="Sem município ou endereço."
+                    required
+                  >
+                    {stateOptions.map((uf) => (
+                      <option key={uf} value={uf}>
+                        {uf}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
                 <Input
-                  name="country"
-                  label="País"
-                  value={country}
-                  onChange={(event) => setCountry(event.target.value)}
-                  autoComplete="country"
-                  helper="Somente nível nacional/regional."
-                  required
+                  name="regionReference"
+                  label="Referência de região"
+                  placeholder="Ex.: Oeste do PR, Alto Sertão"
+                  value={regionReference}
+                  onChange={(event) => setRegionReference(event.target.value)}
+                  maxLength={80}
+                  helper="Nunca pedir endereço exato."
                 />
-                <Select
-                  name="state"
-                  label="Estado"
-                  value={state}
-                  onChange={(event) => setState(event.target.value)}
-                  aria-label="Estado"
-                  helper="Sem município ou endereço."
-                  required
-                >
-                  {stateOptions.map((uf) => (
-                    <option key={uf} value={uf}>
-                      {uf}
-                    </option>
-                  ))}
-                </Select>
-              </div>
 
-              <Input
-                name="regionReference"
-                label="Referência de região"
-                placeholder="Ex.: Oeste do PR, Alto Sertão, Zona da Mata"
-                value={regionReference}
-                onChange={(event) => setRegionReference(event.target.value)}
-                maxLength={80}
-                helper="Nunca peça endereço exato."
-              />
-
-              <div className="rounded-xl bg-white p-3 text-sm text-slate-700 shadow-inner">
-                <p className="font-semibold text-emerald-800">{locationMessage}</p>
-                <p className="text-xs text-slate-600">Sem coleta de GPS detalhado ou dados de tutor.</p>
+                <div className="rounded-xl bg-white p-3 text-sm text-slate-700 shadow-inner">
+                  <p className="font-semibold text-emerald-800">{locationMessage}</p>
+                  <p className="text-xs text-slate-600">Sem GPS detalhado ou dados de tutor.</p>
+                </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">Observações (opcional)</p>
+                  <p className="text-sm font-semibold text-slate-900">Observação rápida (opcional)</p>
                   <span className="text-xs text-slate-500">{notes.length}/250</span>
                 </div>
                 <Textarea
                   name="notes"
-                  placeholder="Resumo rápido do que foi visto. Máximo de 250 caracteres."
+                  placeholder="Resumo curto, máximo 250 caracteres."
                   value={notes}
                   onChange={(event) => setNotes(event.target.value.slice(0, 250))}
                   rows={4}
@@ -364,16 +459,20 @@ export default function AlertFormClient() {
                 />
               </div>
 
-              <div className="rounded-xl bg-white p-3 text-sm text-emerald-900 shadow-sm">
-                <p className="font-semibold">Regras de envio</p>
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-slate-700">
-                  <li>Um toque para registrar.</li>
-                  <li>Sem diagnóstico, apenas sinais.</li>
-                  <li>Sem identificação de proprietário ou endereço.</li>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm">
+                <p className="font-semibold">Revisão rápida</p>
+                <ul className="mt-2 space-y-1">
+                  <li>• Sinal: {alertType || "—"}</li>
+                  <li>• Espécie: {species || "—"}</li>
+                  <li>• Nº animais: {herdCount || "—"}</li>
+                  <li>• Gravidade: {severity || "—"}</li>
+                  <li>
+                    • Região: {country} / {state}
+                  </li>
                 </ul>
               </div>
             </div>
-          </div>
+          )}
 
           {errors.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -394,10 +493,27 @@ export default function AlertFormClient() {
           )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600">Fluxo pensado para ser concluído em menos de 60 segundos.</p>
-            <Button type="submit" className="w-full sm:w-auto px-6 py-3 text-base">
-              Registrar alerta
-            </Button>
+            <div className="flex items-center gap-3 text-sm text-slate-600">
+              <Button
+                type="button"
+                variant="secondary"
+                className="px-4 py-2"
+                onClick={goBack}
+                disabled={step === 0}
+              >
+                Voltar
+              </Button>
+              <span>Fluxo concluído em menos de 60s.</span>
+            </div>
+            {step < 4 ? (
+              <Button type="button" className="w-full sm:w-auto px-6 py-3 text-base" onClick={handleNext}>
+                Próximo
+              </Button>
+            ) : (
+              <Button type="submit" className="w-full sm:w-auto px-6 py-3 text-base">
+                Registrar alerta
+              </Button>
+            )}
           </div>
         </form>
       </Card>
