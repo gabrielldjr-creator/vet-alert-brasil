@@ -168,6 +168,7 @@ function QuickSelect({
 export default function AlertFormClient() {
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
+  const [alertGroup, setAlertGroup] = useState(alertCategories[0].group);
   const [herdCount, setHerdCount] = useState("");
   const [severity, setSeverity] = useState("");
   const [state, setState] = useState("RS");
@@ -251,7 +252,7 @@ export default function AlertFormClient() {
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Fluxo de campo</p>
         <h1 className="text-3xl font-semibold text-slate-900">Registrar alerta</h1>
-        <p className="text-sm text-slate-600">Uso móvel, alta visibilidade e zero fricção.</p>
+        <p className="text-sm text-slate-600">Alta visibilidade, poucos toques, foco em campo.</p>
       </div>
 
       <Card className="p-6 shadow-sm">
@@ -274,36 +275,55 @@ export default function AlertFormClient() {
             <div className="space-y-4">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Tipo de sinal observado</p>
-                <p className="text-sm text-slate-600">Toque e avance automaticamente.</p>
+                <p className="text-sm text-slate-600">Selecione a categoria, depois o sinal específico.</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {alertCategories.map((group) => (
-                  <div key={group.group} className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{group.group}</p>
-                    <div className="grid gap-2">
-                      {group.options.map((option) => {
-                        const selected = alertType === option;
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            className={[
-                              buttonBaseStyles,
-                              selected ? buttonSelected : buttonUnselected,
-                              "p-3 text-left text-sm sm:text-base",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                            onClick={() => handleSelection(setAlertType)(option)}
-                            aria-pressed={selected}
-                          >
-                            <span className="block font-semibold">{option}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+
+              <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Categoria de alerta">
+                {alertCategories.map((group) => {
+                  const active = alertGroup === group.group;
+                  return (
+                    <button
+                      key={group.group}
+                      type="button"
+                      className={[
+                        "rounded-xl border px-3 py-3 text-left text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500",
+                        active ? "border-emerald-600 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-white text-slate-800",
+                      ].join(" ")}
+                      aria-pressed={active}
+                      onClick={() => setAlertGroup(group.group)}
+                    >
+                      {group.group}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opções da categoria</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {alertCategories
+                    .find((group) => group.group === alertGroup)
+                    ?.options.map((option) => {
+                      const selected = alertType === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          className={[
+                            buttonBaseStyles,
+                            selected ? buttonSelected : buttonUnselected,
+                            "p-3 text-left text-sm sm:text-base",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => handleSelection(setAlertType)(option)}
+                          aria-pressed={selected}
+                        >
+                          <span className="block font-semibold">{option}</span>
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
             </div>
           )}
@@ -312,14 +332,14 @@ export default function AlertFormClient() {
             <div className="space-y-4">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Espécie</p>
-                <p className="text-sm text-slate-600">Botões grandes para toque rápido.</p>
+                <p className="text-sm text-slate-600">Botões grandes, alto contraste.</p>
               </div>
               <QuickSelect
                 label=""
                 options={speciesOptions}
                 value={species}
                 onChange={handleSelection(setSpecies)}
-                columns={2}
+                columns={1}
               />
             </div>
           )}
@@ -344,7 +364,7 @@ export default function AlertFormClient() {
             <div className="space-y-4">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Gravidade percebida</p>
-                <p className="text-sm text-slate-600">Cores só aqui para foco.</p>
+                <p className="text-sm text-slate-600">Cores fortes apenas aqui.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 {severityLevels.map((level) => {
@@ -361,8 +381,11 @@ export default function AlertFormClient() {
                       type="button"
                       className={[
                         "rounded-xl border p-4 text-left text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 sm:text-base",
-                        selected ? "ring-2 ring-emerald-200" : "",
+                        selected
+                          ? "ring-2 ring-offset-1 ring-emerald-600"
+                          : "hover:border-emerald-200 hover:bg-emerald-50",
                         severityStyles[level as keyof typeof severityStyles],
+                        "min-h-[64px]",
                       ]
                         .filter(Boolean)
                         .join(" ")}
@@ -380,8 +403,8 @@ export default function AlertFormClient() {
           {step === 4 && (
             <div className="space-y-5">
               <div className="space-y-1">
-                <p className="text-lg font-semibold text-slate-900">Contexto rápido</p>
-                <p className="text-sm text-slate-600">Região automática, nota opcional.</p>
+                <p className="text-lg font-semibold text-slate-900">Região e envio</p>
+                <p className="text-sm text-slate-600">Somente país + estado, sem endereço.</p>
               </div>
 
               <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
@@ -438,7 +461,7 @@ export default function AlertFormClient() {
                   helper="Nunca pedir endereço exato."
                 />
 
-                <div className="rounded-xl bg-white p-3 text-sm text-slate-700 shadow-inner">
+                <div className="rounded-xl bg-white p-3 text-sm text-slate-800 shadow-inner">
                   <p className="font-semibold text-emerald-800">{locationMessage}</p>
                   <p className="text-xs text-slate-600">Sem GPS detalhado ou dados de tutor.</p>
                 </div>
