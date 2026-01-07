@@ -104,8 +104,8 @@ export function ProfileSetupCard({
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-          <Button type="submit" isLoading={isSubmitting}>
-            Ativar sessão
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Ativando..." : "Ativar sessão"}
           </Button>
         </form>
       </Card>
