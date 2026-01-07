@@ -1,51 +1,12 @@
-"use client";
+import Link from "next/link";
 
-import { useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { useRouter } from "next/navigation";
-
-import { ensurePilotAuth } from "../lib/auth";
-import { auth } from "../lib/firebase";
-
-export function AccessButton() {
-  const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(Boolean(user));
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const [error, setError] = useState("");
-  const handleClick = async () => {
-    if (isAuthenticated) {
-      router.push("/alerta/novo");
-      return;
-    }
-
-    try {
-      setError("");
-      await ensurePilotAuth();
-      router.push("/alerta/novo");
-    } catch (authError) {
-      console.error("Erro ao iniciar sessão técnica", authError);
-      setError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
-    }
-  };
-
+export function AccessButton({ label = "Registrar alerta" }: { label?: string }) {
   return (
-    <div className="hidden flex-col items-end gap-2 sm:flex">
-      <button
-        type="button"
-        onClick={handleClick}
-        className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-      >
-        Acesso
-      </button>
-      {error ? <span className="text-xs text-rose-600">{error}</span> : null}
-    </div>
+    <Link
+      href="/alerta/novo"
+      className="rounded-lg border border-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
+    >
+      {label}
+    </Link>
   );
 }
