@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signInAnonymously } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
+import { ensureAnonymousAuth } from "../../lib/auth";
 import { Card } from "../../components/Card";
-import { auth } from "../../lib/firebase";
 
 export default function AccessLinkClient() {
   const router = useRouter();
@@ -22,7 +21,7 @@ export default function AccessLinkClient() {
 
     const run = async () => {
       try {
-        await signInAnonymously(auth);
+        await ensureAnonymousAuth();
         updateStatus("ready");
         router.replace("/alerta/novo");
       } catch (error) {

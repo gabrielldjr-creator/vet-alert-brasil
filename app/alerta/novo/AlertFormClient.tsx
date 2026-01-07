@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -12,6 +12,7 @@ import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { AccessRestricted } from "../../../components/AccessRestricted";
 import { auth, db } from "../../../lib/firebase";
+import { ensureAnonymousAuth } from "../../../lib/auth";
 import { stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
@@ -253,7 +254,7 @@ export default function AlertFormClient() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         try {
-          await signInAnonymously(auth);
+          await ensureAnonymousAuth();
         } catch (authError) {
           console.error("Erro ao iniciar sessão anônima", authError);
           setStatus("restricted");
@@ -386,8 +387,7 @@ export default function AlertFormClient() {
     let user = auth.currentUser;
     if (!user) {
       try {
-        const credential = await signInAnonymously(auth);
-        user = credential.user;
+        user = await ensureAnonymousAuth();
       } catch (authError) {
         console.error("Erro ao iniciar sessão anônima", authError);
         setSubmitError("Falha ao autenticar anonimamente. Tente novamente.");

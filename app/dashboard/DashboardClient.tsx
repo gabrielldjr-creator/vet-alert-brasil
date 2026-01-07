@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, onSnapshot, orderBy, query, where, setDoc, serverTimestamp } from "firebase/firestore";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
 import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Select } from "../../components/Select";
+import { ensureAnonymousAuth } from "../../lib/auth";
 import { auth, db } from "../../lib/firebase";
 
 const speciesFilters = [
@@ -66,7 +67,7 @@ export function DashboardClient() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         try {
-          await signInAnonymously(auth);
+          await ensureAnonymousAuth();
         } catch (authError) {
           console.error("Erro ao iniciar sessão anônima", authError);
           setStatus("restricted");
