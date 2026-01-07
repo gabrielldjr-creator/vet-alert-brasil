@@ -395,6 +395,10 @@ export default function AlertFormClient() {
         return;
       }
     }
+    if (!user) {
+      setSubmitError("Falha ao autenticar anonimamente. Tente novamente.");
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError("");
