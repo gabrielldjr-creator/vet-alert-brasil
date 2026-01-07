@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { collection, doc, getDoc, onSnapshot, orderBy, query, where, setDoc, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
 import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
@@ -38,9 +38,7 @@ const periodOptions = [
 ];
 
 export function DashboardClient() {
-  const [status, setStatus] = useState<"checking" | "restricted" | "needs-profile" | "ready">(
-    "checking"
-  );
+  const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
   const [profile, setProfile] = useState<{ state?: string; city?: string } | null>(null);
   const [alerts, setAlerts] = useState<
     {
@@ -68,7 +66,12 @@ export function DashboardClient() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        setStatus("restricted");
+        try {
+          await signInAnonymously(auth);
+        } catch (authError) {
+          console.error("Erro ao iniciar sessão anônima", authError);
+          setStatus("restricted");
+        }
         return;
       }
 
@@ -77,7 +80,17 @@ export function DashboardClient() {
         const profileSnap = await getDoc(profileRef);
 
         if (!profileSnap.exists()) {
-          setStatus("needs-profile");
+          const fallbackProfile = {
+            uid: user.uid,
+            role: "vet",
+            state: "SC",
+            city: null,
+            verified: false,
+            createdAt: serverTimestamp(),
+          };
+          await setDoc(profileRef, fallbackProfile);
+          setProfile(fallbackProfile);
+          setStatus("ready");
           return;
         }
 
@@ -85,7 +98,7 @@ export function DashboardClient() {
         setStatus("ready");
       } catch (error) {
         console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("needs-profile");
+        setStatus("restricted");
       }
     });
 
@@ -181,19 +194,6 @@ export function DashboardClient() {
 
   if (status === "restricted") {
     return <AccessRestricted />;
-  }
-
-  if (status === "needs-profile") {
-    return (
-      <ProfileSetupCard
-        title="Finalize seu perfil para liberar o painel"
-        description="Informe o estado CRMV para filtrar os alertas regionais."
-        onComplete={(nextProfile) => {
-          setProfile(nextProfile);
-          setStatus("ready");
-        }}
-      />
-    );
   }
 
   const stateScope = profile?.state ?? "UF";

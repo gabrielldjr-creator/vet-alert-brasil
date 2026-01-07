@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -222,16 +222,14 @@ function QuickSelect({
 
 export default function AlertFormClient() {
   const router = useRouter();
-  const [status, setStatus] = useState<"checking" | "restricted" | "needs-profile" | "ready">(
-    "checking"
-  );
+  const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
   const [alertGroup, setAlertGroup] = useState(alertCategories[0].group);
   const [alertDetails, setAlertDetails] = useState<string[]>([]);
   const [herdCount, setHerdCount] = useState("");
   const [severity, setSeverity] = useState("");
-  const [state, setState] = useState("RS");
+  const [state, setState] = useState("SC");
   const [country, setCountry] = useState("Brasil");
   const [regionReference, setRegionReference] = useState("");
   const [locationMessage, setLocationMessage] = useState("Detectando região...");
@@ -255,7 +253,12 @@ export default function AlertFormClient() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        setStatus("restricted");
+        try {
+          await signInAnonymously(auth);
+        } catch (authError) {
+          console.error("Erro ao iniciar sessão anônima", authError);
+          setStatus("restricted");
+        }
         return;
       }
 
@@ -263,7 +266,17 @@ export default function AlertFormClient() {
         const profileRef = doc(db, "vetProfiles", user.uid);
         const profileSnap = await getDoc(profileRef);
         if (!profileSnap.exists()) {
-          setStatus("needs-profile");
+          await setDoc(profileRef, {
+            uid: user.uid,
+            role: "vet",
+            state: "SC",
+            city: null,
+            verified: false,
+            createdAt: serverTimestamp(),
+          });
+          setState("SC");
+          setRegionReference("");
+          setStatus("ready");
           return;
         }
 
@@ -277,7 +290,7 @@ export default function AlertFormClient() {
         setStatus("ready");
       } catch (error) {
         console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("needs-profile");
+        setStatus("restricted");
       }
     });
 
@@ -371,10 +384,16 @@ export default function AlertFormClient() {
 
     if (missing.length > 0) return;
 
-    const user = auth.currentUser;
+    let user = auth.currentUser;
     if (!user) {
-      setStatus("restricted");
-      return;
+      try {
+        const credential = await signInAnonymously(auth);
+        user = credential.user;
+      } catch (authError) {
+        console.error("Erro ao iniciar sessão anônima", authError);
+        setSubmitError("Falha ao autenticar anonimamente. Tente novamente.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -445,22 +464,6 @@ export default function AlertFormClient() {
 
   if (status === "restricted") {
     return <AccessRestricted />;
-  }
-
-  if (status === "needs-profile") {
-    return (
-      <ProfileSetupCard
-        defaultState={state}
-        defaultCity={regionReference}
-        onComplete={(profile) => {
-          setState(profile.state);
-          setRegionReference(profile.city ?? "");
-          setStatus("ready");
-        }}
-        title="Confirme seu estado para continuar"
-        description="Precisamos do estado CRMV para liberar o envio de alertas e filtrar o painel regional."
-      />
-    );
   }
 
   return (
