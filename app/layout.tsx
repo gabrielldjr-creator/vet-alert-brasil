@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vet Alert Brasil | Acesso restrito a veterinários",
+  title: "Vet Alert Brasil | Piloto regional",
   description:
-    "Plataforma de inteligência epidemiológica exclusiva para médicos-veterinários. Estado do CRMV define a região base do painel.",
+    "Plataforma piloto de alertas epidemiológicos veterinários com sinais regionais agregados.",
   applicationName: "Vet Alert Brasil",
 };
 
