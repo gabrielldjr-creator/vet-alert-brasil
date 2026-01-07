@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, onSnapshot, orderBy, query, where, setDoc, serverTimestamp } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { useSearchParams } from "next/navigation";
-import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Select } from "../../components/Select";
-import { ensurePilotAuth } from "../../lib/auth";
-import { auth, db } from "../../lib/firebase";
+import { db } from "../../lib/firebase";
+import { stateOptions } from "../../lib/regions";
 
 const speciesFilters = [
   "Equinos",
@@ -38,8 +36,6 @@ const periodOptions = [
 ];
 
 export function DashboardClient() {
-  const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
-  const [profile, setProfile] = useState<{ state?: string; city?: string } | null>(null);
   const [alerts, setAlerts] = useState<
     {
       id: string;
@@ -55,6 +51,7 @@ export function DashboardClient() {
     }[]
   >([]);
   const [viewMode, setViewMode] = useState<"estado" | "cidade">("estado");
+  const [stateFilter, setStateFilter] = useState("SC");
   const [cityFilter, setCityFilter] = useState("");
   const [speciesFilter, setSpeciesFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -64,52 +61,11 @@ export function DashboardClient() {
   const registrationFlag = searchParams.get("registrado") === "1";
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        try {
-          await ensurePilotAuth();
-        } catch (authError) {
-          console.error("Erro ao iniciar sessão técnica", authError);
-          setStatus("restricted");
-        }
-        return;
-      }
-
-      try {
-        const profileRef = doc(db, "vetProfiles", user.uid);
-        const profileSnap = await getDoc(profileRef);
-
-        if (!profileSnap.exists()) {
-          const fallbackProfile = {
-            uid: user.uid,
-            role: "vet",
-            state: "SC",
-            verified: false,
-            createdAt: serverTimestamp(),
-          };
-          await setDoc(profileRef, fallbackProfile);
-          setProfile(fallbackProfile);
-          setStatus("ready");
-          return;
-        }
-
-        setProfile(profileSnap.data() as { state?: string; city?: string });
-        setStatus("ready");
-      } catch (error) {
-        console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("restricted");
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (status !== "ready" || !profile?.state) return;
+    if (!stateFilter) return;
 
     const baseQuery = query(
       collection(db, "alerts"),
-      where("state", "==", profile.state),
+      where("state", "==", stateFilter),
       orderBy("createdAt", "desc")
     );
 
@@ -122,7 +78,7 @@ export function DashboardClient() {
     });
 
     return () => unsubscribe();
-  }, [status, profile]);
+  }, [stateFilter]);
 
   const now = useMemo(() => new Date(), []);
   const periodCutoff = useMemo(() => {
@@ -180,33 +136,15 @@ export function DashboardClient() {
       .slice(0, 6);
   }, [filteredAlerts]);
 
-  if (status === "checking") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Verificando acesso</p>
-          <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
-        </Card>
-      </div>
-    );
-  }
-
-  if (status === "restricted") {
-    return <AccessRestricted />;
-  }
-
-  const stateScope = profile?.state ?? "UF";
-
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
       <section className="flex flex-col gap-3">
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Painel autenticado</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Painel regional</p>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-slate-900">Alertas recentes da sua região CRMV</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">Alertas regionais recentes</h1>
             <p className="max-w-3xl text-base text-slate-700">
-              Alertas já filtrados pelo estado registrado no perfil verificado do veterinário. Ajuste a visualização por cidade e refine
-              por espécie, tipo de alerta e gravidade.
+              Sinais agregados por estado, com filtros por cidade, espécie, tipo de alerta e gravidade.
             </p>
           </div>
           <Button href="/alerta/novo">Registrar novo alerta</Button>
@@ -217,8 +155,7 @@ export function DashboardClient() {
           </div>
         )}
         <div className="rounded-xl bg-slate-900 px-5 py-4 text-sm text-slate-50">
-          Sessão restrita a médicos-veterinários convidados. O estado do CRMV define automaticamente o escopo inicial dos alertas
-          exibidos.
+          Dados agregados em tempo real para acompanhamento regional.
         </div>
       </section>
 
@@ -226,9 +163,24 @@ export function DashboardClient() {
         <Card className="space-y-6 p-6">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Filtros essenciais</p>
-            <p className="text-sm text-slate-600">Escopo limitado ao estado CRMV: {stateScope}.</p>
+            <p className="text-sm text-slate-600">Selecione o estado para iniciar a análise regional.</p>
           </div>
           <div className="grid gap-5">
+            <Select
+              name="estado"
+              label="Estado"
+              value={stateFilter}
+              onChange={(event) => {
+                setStateFilter(event.target.value);
+                setCityFilter("");
+              }}
+            >
+              {stateOptions.map((uf) => (
+                <option key={uf} value={uf}>
+                  {uf}
+                </option>
+              ))}
+            </Select>
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Visualização</p>
               <div className="flex flex-wrap gap-2">
@@ -257,7 +209,7 @@ export function DashboardClient() {
                 label="Cidade (opcional)"
                 value={cityFilter}
                 onChange={(event) => setCityFilter(event.target.value)}
-                helper="Somente cidades do seu estado CRMV."
+                helper="Somente cidades do estado selecionado."
               >
                 <option value="">Todas as cidades</option>
                 {cityOptions.map((city) => (

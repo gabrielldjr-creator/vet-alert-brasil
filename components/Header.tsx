@@ -3,7 +3,8 @@ import Link from "next/link";
 import { AccessButton } from "./AccessButton";
 
 const links = [
-  { href: "/dashboard", label: "Painel" },
+  { href: "/alerta/novo", label: "Registrar alerta" },
+  { href: "/dashboard", label: "Alertas regionais" },
 ];
 
 export function Header() {
@@ -19,21 +20,17 @@ export function Header() {
             <div className="text-base">Brasil</div>
           </div>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm font-medium text-slate-700 sm:flex">
+        <nav className="flex items-center gap-3 text-sm font-medium text-slate-700">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-lg px-2 py-1 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
+              className="rounded-lg border border-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
             >
               {link.label}
             </Link>
           ))}
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
-            Acesso restrito a veterinários
-          </span>
         </nav>
-        <AccessButton />
       </div>
     </header>
   );
