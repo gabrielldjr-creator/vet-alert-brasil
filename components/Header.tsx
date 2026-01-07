@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AccessButton } from "./AccessButton";
+
 const links = [
   { href: "/alerta/novo", label: "Registrar alerta" },
   { href: "/dashboard", label: "Alertas regionais" },
