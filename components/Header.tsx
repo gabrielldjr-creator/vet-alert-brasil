@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-const links = [
-  { href: "/dashboard", label: "Painel" },
-];
+import { AccessButton } from "./AccessButton";
+
+const links = [{ href: "/dashboard", label: "Alertas regionais" }];
 
 export function Header() {
   return (
@@ -17,26 +17,18 @@ export function Header() {
             <div className="text-base">Brasil</div>
           </div>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm font-medium text-slate-700 sm:flex">
+        <nav className="flex items-center gap-3 text-sm font-medium text-slate-700">
+          <AccessButton />
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-lg px-2 py-1 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
+              className="rounded-lg border border-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
             >
               {link.label}
             </Link>
           ))}
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
-            Acesso restrito a veterinários
-          </span>
         </nav>
-        <Link
-          href="/acesso"
-          className="hidden rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 sm:inline-flex"
-        >
-          Entenda o acesso
-        </Link>
       </div>
     </header>
   );

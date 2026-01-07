@@ -2,9 +2,8 @@ import { Suspense } from "react";
 import { DashboardClient } from "./DashboardClient";
 
 export const metadata = {
-  title: "Painel regional | Vet Alert Brasil",
-  description:
-    "Painel restrito para veterinários autenticados via link mágico. Alertas seguem o estado do CRMV do perfil verificado.",
+  title: "Alertas regionais | Vet Alert Brasil",
+  description: "Painel regional com sinais agregados em tempo real para o piloto.",
 };
 
 export default function DashboardPage() {
