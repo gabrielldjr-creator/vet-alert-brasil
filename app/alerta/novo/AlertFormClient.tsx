@@ -13,6 +13,7 @@ import { Textarea } from "../../../components/Textarea";
 import { AccessRestricted } from "../../../components/AccessRestricted";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
+import { ensureAnonymousAuth } from "../../../lib/auth";
 import { stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
@@ -254,7 +255,7 @@ export default function AlertFormClient() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         try {
-          await signInAnonymously(auth);
+          await ensureAnonymousAuth();
         } catch (authError) {
           console.error("Erro ao iniciar sessão anônima", authError);
           setStatus("restricted");
@@ -387,8 +388,7 @@ export default function AlertFormClient() {
     let user = auth.currentUser;
     if (!user) {
       try {
-        const credential = await signInAnonymously(auth);
-        user = credential.user;
+        user = await ensureAnonymousAuth();
       } catch (authError) {
         console.error("Erro ao iniciar sessão anônima", authError);
         setSubmitError("Falha ao autenticar anonimamente. Tente novamente.");

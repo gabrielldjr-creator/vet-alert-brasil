@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { signInAnonymously } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
-import { auth } from "../lib/firebase";
+import { ensureAnonymousAuth } from "../lib/auth";
 import { Button } from "./Button";
 import { Card } from "./Card";
 
@@ -17,7 +16,7 @@ export function AccessRestricted() {
     setIsSubmitting(true);
     setError("");
     try {
-      await signInAnonymously(auth);
+      await ensureAnonymousAuth();
       router.push("/alerta/novo");
     } catch (authError) {
       console.error("Erro ao iniciar sessão anônima", authError);
