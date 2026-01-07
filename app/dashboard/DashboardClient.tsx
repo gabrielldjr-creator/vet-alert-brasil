@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { collection, doc, getDoc, onSnapshot, orderBy, query, where, setDoc, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
-import { AccessDenied } from "../../components/AccessDenied";
 import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
@@ -38,11 +37,12 @@ const periodOptions = [
 ];
 
 export function DashboardClient() {
-  const [status, setStatus] = useState<"checking" | "restricted" | "denied" | "ready">("checking");
+  const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
   const [profile, setProfile] = useState<{ state?: string; city?: string } | null>(null);
   const [alerts, setAlerts] = useState<
     {
       id: string;
+      createdAt?: { toDate: () => Date };
       timestamp?: { toDate: () => Date };
       state?: string;
       city?: string;
@@ -65,7 +65,12 @@ export function DashboardClient() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        setStatus("restricted");
+        try {
+          await signInAnonymously(auth);
+        } catch (authError) {
+          console.error("Erro ao iniciar sessão anônima", authError);
+          setStatus("restricted");
+        }
         return;
       }
 
@@ -74,7 +79,16 @@ export function DashboardClient() {
         const profileSnap = await getDoc(profileRef);
 
         if (!profileSnap.exists()) {
-          setStatus("denied");
+          const fallbackProfile = {
+            uid: user.uid,
+            role: "vet",
+            state: "SC",
+            verified: false,
+            createdAt: serverTimestamp(),
+          };
+          await setDoc(profileRef, fallbackProfile);
+          setProfile(fallbackProfile);
+          setStatus("ready");
           return;
         }
 
@@ -82,7 +96,7 @@ export function DashboardClient() {
         setStatus("ready");
       } catch (error) {
         console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("denied");
+        setStatus("restricted");
       }
     });
 
@@ -95,7 +109,7 @@ export function DashboardClient() {
     const baseQuery = query(
       collection(db, "alerts"),
       where("state", "==", profile.state),
-      orderBy("timestamp", "desc")
+      orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(baseQuery, (snapshot) => {
@@ -119,8 +133,8 @@ export function DashboardClient() {
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((alert) => {
-      if (!alert.timestamp?.toDate) return false;
-      const createdAt = alert.timestamp.toDate();
+      const createdAt = alert.createdAt?.toDate?.() ?? alert.timestamp?.toDate?.();
+      if (!createdAt) return false;
       if (createdAt < periodCutoff) return false;
       if (speciesFilter && alert.species !== speciesFilter) return false;
       if (typeFilter && alert.alertGroup !== typeFilter) return false;
@@ -178,10 +192,6 @@ export function DashboardClient() {
 
   if (status === "restricted") {
     return <AccessRestricted />;
-  }
-
-  if (status === "denied") {
-    return <AccessDenied />;
   }
 
   const stateScope = profile?.state ?? "UF";
