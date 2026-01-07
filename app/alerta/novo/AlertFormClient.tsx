@@ -11,6 +11,7 @@ import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { AccessRestricted } from "../../../components/AccessRestricted";
+import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
 import { stateOptions } from "../../../lib/regions";
 
