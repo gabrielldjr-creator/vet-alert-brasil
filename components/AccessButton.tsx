@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
-import { ensureAnonymousAuth } from "../lib/auth";
+import { ensurePilotAuth } from "../lib/auth";
 import { auth } from "../lib/firebase";
 
 export function AccessButton() {
@@ -28,11 +28,11 @@ export function AccessButton() {
 
     try {
       setError("");
-      await ensureAnonymousAuth();
+      await ensurePilotAuth();
       router.push("/alerta/novo");
     } catch (authError) {
-      console.error("Erro ao iniciar sessão anônima", authError);
-      setError("Falha ao autenticar anonimamente. Verifique sua conexão.");
+      console.error("Erro ao iniciar sessão técnica", authError);
+      setError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
     }
   };
 

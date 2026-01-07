@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { ensureAnonymousAuth } from "../lib/auth";
+import { ensurePilotAuth } from "../lib/auth";
 import { Button } from "./Button";
 import { Card } from "./Card";
 
@@ -16,11 +16,11 @@ export function AccessRestricted() {
     setIsSubmitting(true);
     setError("");
     try {
-      await ensureAnonymousAuth();
+      await ensurePilotAuth();
       router.push("/alerta/novo");
     } catch (authError) {
-      console.error("Erro ao iniciar sessão anônima", authError);
-      setError("Falha ao autenticar anonimamente. Verifique sua conexão.");
+      console.error("Erro ao iniciar sessão técnica", authError);
+      setError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
     } finally {
       setIsSubmitting(false);
     }
@@ -36,7 +36,7 @@ export function AccessRestricted() {
           Entrar e registrar alerta agora
         </h1>
         <p className="max-w-3xl text-lg text-slate-700">
-          Clique para iniciar uma sessão anônima e registrar um alerta em segundos. Não há formulários de cadastro nem etapas
+          Clique para iniciar uma sessão técnica e registrar um alerta em segundos. Não há formulários de cadastro nem etapas
           intermediárias.
         </p>
       </div>

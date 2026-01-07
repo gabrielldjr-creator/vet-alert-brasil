@@ -13,7 +13,7 @@ import { Textarea } from "../../../components/Textarea";
 import { AccessRestricted } from "../../../components/AccessRestricted";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
-import { ensureAnonymousAuth } from "../../../lib/auth";
+import { ensurePilotAuth } from "../../../lib/auth";
 import { stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
@@ -255,9 +255,10 @@ export default function AlertFormClient() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         try {
-          await ensureAnonymousAuth();
+          await ensurePilotAuth();
         } catch (authError) {
-          console.error("Erro ao iniciar sessão anônima", authError);
+          console.error("Erro ao iniciar sessão técnica", authError);
+          setSubmitError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
           setStatus("restricted");
         }
         return;
@@ -271,7 +272,6 @@ export default function AlertFormClient() {
             uid: user.uid,
             role: "vet",
             state: "SC",
-            city: null,
             verified: false,
             createdAt: serverTimestamp(),
           });
@@ -388,15 +388,15 @@ export default function AlertFormClient() {
     let user = auth.currentUser;
     if (!user) {
       try {
-        user = await ensureAnonymousAuth();
+        user = await ensurePilotAuth();
       } catch (authError) {
-        console.error("Erro ao iniciar sessão anônima", authError);
-        setSubmitError("Falha ao autenticar anonimamente. Tente novamente.");
+        console.error("Erro ao iniciar sessão técnica", authError);
+        setSubmitError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
         return;
       }
     }
     if (!user) {
-      setSubmitError("Falha ao autenticar anonimamente. Tente novamente.");
+      setSubmitError("Falha ao iniciar sessão.");
       return;
     }
 
@@ -410,7 +410,7 @@ export default function AlertFormClient() {
         createdAt: serverTimestamp(),
         vetId: user.uid,
         state,
-        city: regionReference.trim() ? regionReference.trim() : null,
+        city: regionReference.trim() ? regionReference.trim() : undefined,
         species,
         alertType,
         alertGroup,

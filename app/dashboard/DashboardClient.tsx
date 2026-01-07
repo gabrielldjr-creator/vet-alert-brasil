@@ -8,7 +8,7 @@ import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Select } from "../../components/Select";
-import { ensureAnonymousAuth } from "../../lib/auth";
+import { ensurePilotAuth } from "../../lib/auth";
 import { auth, db } from "../../lib/firebase";
 
 const speciesFilters = [
@@ -67,9 +67,9 @@ export function DashboardClient() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         try {
-          await ensureAnonymousAuth();
+          await ensurePilotAuth();
         } catch (authError) {
-          console.error("Erro ao iniciar sessão anônima", authError);
+          console.error("Erro ao iniciar sessão técnica", authError);
           setStatus("restricted");
         }
         return;
