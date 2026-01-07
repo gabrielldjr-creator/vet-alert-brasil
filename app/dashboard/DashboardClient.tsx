@@ -8,6 +8,7 @@ import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Select } from "../../components/Select";
+import { ProfileSetupCard } from "../../components/ProfileSetupCard";
 import { auth, db } from "../../lib/firebase";
 
 const speciesFilters = [
