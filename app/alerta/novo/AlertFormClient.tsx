@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -11,6 +11,7 @@ import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { AccessRestricted } from "../../../components/AccessRestricted";
+import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
 import { ensurePilotAuth } from "../../../lib/auth";
 import { stateOptions } from "../../../lib/regions";
