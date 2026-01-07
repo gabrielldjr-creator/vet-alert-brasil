@@ -27,7 +27,7 @@ export default function AccessLinkClient() {
         router.replace("/alerta/novo");
       } catch (error) {
         console.error("Erro ao iniciar sessão anônima", error);
-        updateStatus("error", "Não foi possível iniciar a sessão. Tente novamente.");
+        updateStatus("error", "Falha ao autenticar anonimamente. Verifique sua conexão.");
       }
     };
 

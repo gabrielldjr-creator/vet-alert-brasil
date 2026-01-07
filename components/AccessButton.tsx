@@ -31,7 +31,7 @@ export function AccessButton() {
       router.push("/alerta/novo");
     } catch (authError) {
       console.error("Erro ao iniciar sessão anônima", authError);
-      setError("Não foi possível iniciar a sessão. Tente novamente.");
+      setError("Falha ao autenticar anonimamente. Verifique sua conexão.");
     }
   };
 
