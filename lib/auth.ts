@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   setPersistence,
   signInWithEmailAndPassword,
+  signInAnonymously,
 } from "firebase/auth";
 
 import { auth } from "./firebase";
@@ -62,10 +63,23 @@ export async function ensurePilotAuth() {
         const credential = await signInWithEmailAndPassword(auth, email, SESSION_PASSWORD);
         return credential.user;
       }
+      if (authError.code === "auth/operation-not-allowed") {
+        const credential = await signInAnonymously(auth);
+        return credential.user;
+      }
       throw error;
     }
   } catch (error: unknown) {
     const authError = error as { code?: string };
+    if (authError.code === "auth/operation-not-allowed") {
+      try {
+        const credential = await signInAnonymously(auth);
+        return credential.user;
+      } catch (anonError: unknown) {
+        const anonAuthError = anonError as { code?: string };
+        throw new Error(mapAuthError(anonAuthError.code));
+      }
+    }
     throw new Error(mapAuthError(authError.code));
   }
 }
