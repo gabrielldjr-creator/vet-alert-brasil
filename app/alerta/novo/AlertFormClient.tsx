@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -10,39 +9,8 @@ import { Card } from "../../../components/Card";
 import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
-import { AccessDenied } from "../../../components/AccessDenied";
-import { AccessRestricted } from "../../../components/AccessRestricted";
-import { auth, db } from "../../../lib/firebase";
-
-const stateOptions = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
-];
+import { db } from "../../../lib/firebase";
+import { stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
   "Equinos",
@@ -251,14 +219,13 @@ function QuickSelect({
 
 export default function AlertFormClient() {
   const router = useRouter();
-  const [status, setStatus] = useState<"checking" | "restricted" | "denied" | "ready">("checking");
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
   const [alertGroup, setAlertGroup] = useState(alertCategories[0].group);
   const [alertDetails, setAlertDetails] = useState<string[]>([]);
   const [herdCount, setHerdCount] = useState("");
   const [severity, setSeverity] = useState("");
-  const [state, setState] = useState("RS");
+  const [state, setState] = useState("SC");
   const [country, setCountry] = useState("Brasil");
   const [regionReference, setRegionReference] = useState("");
   const [locationMessage, setLocationMessage] = useState("Detectando região...");
@@ -278,38 +245,6 @@ export default function AlertFormClient() {
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setStatus("restricted");
-        return;
-      }
-
-      try {
-        const profileRef = doc(db, "vetProfiles", user.uid);
-        const profileSnap = await getDoc(profileRef);
-        if (!profileSnap.exists()) {
-          setStatus("denied");
-          return;
-        }
-
-        const profileData = profileSnap.data() as { state?: string; city?: string };
-        if (profileData?.state) {
-          setState(profileData.state);
-        }
-        if (profileData?.city) {
-          setRegionReference(profileData.city);
-        }
-        setStatus("ready");
-      } catch (error) {
-        console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("denied");
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const detectRegion = useCallback(async () => {
     setIsDetecting(true);
@@ -361,54 +296,13 @@ export default function AlertFormClient() {
     setErrors([]);
   };
 
-  const alertPayload = useMemo(
-    () => ({
-      species,
-      alertType,
-      alertGroup,
-      category: alertGroup,
-      animalsAffected: herdCount,
-      alertDetails,
-      herdCount,
-      severity,
-      country,
-      state,
-      city: regionReference || "",
-      notes: notes.trim() ? notes.trim() : "",
-      eventOnset,
-      recentChanges,
-      feedChange,
-      feedType,
-      feedOrigin,
-      drugExposure,
-      drugCategory,
-      drugInterval,
-      environmentSignals,
-      regionalPattern,
-    }),
-    [
-      species,
-      alertType,
-      alertGroup,
-      alertDetails,
-      herdCount,
-      severity,
-      country,
-      state,
-      regionReference,
-      notes,
-      eventOnset,
-      recentChanges,
-      feedChange,
-      feedType,
-      feedOrigin,
-      drugExposure,
-      drugCategory,
-      drugInterval,
-      environmentSignals,
-      regionalPattern,
-    ]
-  );
+  const casesCount = useMemo(() => {
+    if (herdCount === "1") return 1;
+    if (herdCount.startsWith("2")) return 2;
+    if (herdCount.startsWith("6")) return 6;
+    if (herdCount.startsWith("Mais")) return 21;
+    return 0;
+  }, [herdCount]);
 
   const validateCurrentStep = () => {
     const missing: string[] = [];
@@ -439,22 +333,48 @@ export default function AlertFormClient() {
 
     if (missing.length > 0) return;
 
-    const user = auth.currentUser;
-    if (!user) {
-      setStatus("restricted");
-      return;
-    }
-
     setIsSubmitting(true);
     setSubmitError("");
 
     try {
       const alertRef = doc(collection(db, "alerts"));
       await setDoc(alertRef, {
-        id: alertRef.id,
-        timestamp: serverTimestamp(),
-        vetId: user.uid,
-        ...alertPayload,
+        createdAt: serverTimestamp(),
+        state,
+        city: regionReference.trim() ? regionReference.trim() : undefined,
+        species,
+        alertGroup,
+        severity,
+        cases: casesCount,
+        source: "pilot",
+        context: {
+          alertDetails,
+          notes: notes.trim() ? notes.trim() : "",
+          eventOnset,
+          recentChanges,
+          feed: showsFeedModule
+            ? {
+                feedChange,
+                feedType,
+                feedOrigin,
+              }
+            : null,
+          pharma: showsPharmaModule
+            ? {
+                drugExposure,
+                drugCategory,
+                drugInterval,
+              }
+            : null,
+          environment: showsEnvironmentalModule
+            ? {
+                environmentSignals,
+                regionalPattern,
+              }
+            : null,
+          herdCountLabel: herdCount,
+          country,
+        },
       });
 
       router.push("/dashboard?registrado=1");
@@ -465,25 +385,6 @@ export default function AlertFormClient() {
       setIsSubmitting(false);
     }
   };
-
-  if (status === "checking") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Verificando acesso</p>
-          <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
-        </Card>
-      </div>
-    );
-  }
-
-  if (status === "restricted") {
-    return <AccessRestricted />;
-  }
-
-  if (status === "denied") {
-    return <AccessDenied />;
-  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
