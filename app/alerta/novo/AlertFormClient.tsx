@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
 import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
+import { AccessDenied } from "../../../components/AccessDenied";
+import { AccessRestricted } from "../../../components/AccessRestricted";
+import { auth, db } from "../../../lib/firebase";
 
 const stateOptions = [
   "AC",
@@ -244,6 +250,8 @@ function QuickSelect({
 }
 
 export default function AlertFormClient() {
+  const router = useRouter();
+  const [status, setStatus] = useState<"checking" | "restricted" | "denied" | "ready">("checking");
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
   const [alertGroup, setAlertGroup] = useState(alertCategories[0].group);
@@ -266,9 +274,42 @@ export default function AlertFormClient() {
   const [drugInterval, setDrugInterval] = useState("");
   const [environmentSignals, setEnvironmentSignals] = useState<string[]>([]);
   const [regionalPattern, setRegionalPattern] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setStatus("restricted");
+        return;
+      }
+
+      try {
+        const profileRef = doc(db, "vetProfiles", user.uid);
+        const profileSnap = await getDoc(profileRef);
+        if (!profileSnap.exists()) {
+          setStatus("denied");
+          return;
+        }
+
+        const profileData = profileSnap.data() as { state?: string; city?: string };
+        if (profileData?.state) {
+          setState(profileData.state);
+        }
+        if (profileData?.city) {
+          setRegionReference(profileData.city);
+        }
+        setStatus("ready");
+      } catch (error) {
+        console.error("Erro ao verificar perfil do veterinário", error);
+        setStatus("denied");
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const detectRegion = useCallback(async () => {
     setIsDetecting(true);
@@ -320,6 +361,55 @@ export default function AlertFormClient() {
     setErrors([]);
   };
 
+  const alertPayload = useMemo(
+    () => ({
+      species,
+      alertType,
+      alertGroup,
+      category: alertGroup,
+      animalsAffected: herdCount,
+      alertDetails,
+      herdCount,
+      severity,
+      country,
+      state,
+      city: regionReference || "",
+      notes: notes.trim() ? notes.trim() : "",
+      eventOnset,
+      recentChanges,
+      feedChange,
+      feedType,
+      feedOrigin,
+      drugExposure,
+      drugCategory,
+      drugInterval,
+      environmentSignals,
+      regionalPattern,
+    }),
+    [
+      species,
+      alertType,
+      alertGroup,
+      alertDetails,
+      herdCount,
+      severity,
+      country,
+      state,
+      regionReference,
+      notes,
+      eventOnset,
+      recentChanges,
+      feedChange,
+      feedType,
+      feedOrigin,
+      drugExposure,
+      drugCategory,
+      drugInterval,
+      environmentSignals,
+      regionalPattern,
+    ]
+  );
+
   const validateCurrentStep = () => {
     const missing: string[] = [];
     if (step === 0 && !alertType) missing.push("Escolha o tipo de alerta");
@@ -337,7 +427,7 @@ export default function AlertFormClient() {
     }
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const missing: string[] = [];
     if (!species) missing.push("Selecione a espécie");
@@ -347,22 +437,53 @@ export default function AlertFormClient() {
     if (!severity) missing.push("Classifique a gravidade");
     setErrors(missing);
 
-    if (missing.length === 0) {
-      setSubmitted(true);
-      setEventOnset("");
-      setRecentChanges("");
-      setFeedChange("");
-      setFeedType([]);
-      setFeedOrigin("");
-      setDrugExposure("");
-      setDrugCategory([]);
-      setDrugInterval("");
-      setEnvironmentSignals([]);
-      setRegionalPattern("");
-      setStep(0);
-      setTimeout(() => setSubmitted(false), 5000);
+    if (missing.length > 0) return;
+
+    const user = auth.currentUser;
+    if (!user) {
+      setStatus("restricted");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const alertRef = doc(collection(db, "alerts"));
+      await setDoc(alertRef, {
+        id: alertRef.id,
+        timestamp: serverTimestamp(),
+        vetId: user.uid,
+        ...alertPayload,
+      });
+
+      router.push("/dashboard?registrado=1");
+    } catch (error) {
+      console.error("Erro ao registrar alerta", error);
+      setSubmitError("Não foi possível registrar o alerta. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  if (status === "checking") {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <Card className="w-full max-w-md space-y-3 p-6 text-center">
+          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Verificando acesso</p>
+          <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (status === "restricted") {
+    return <AccessRestricted />;
+  }
+
+  if (status === "denied") {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
@@ -917,8 +1038,8 @@ export default function AlertFormClient() {
 
                 <Input
                   name="regionReference"
-                  label="Referência de região"
-                  placeholder="Ex.: Oeste do PR, Alto Sertão"
+                  label="Cidade ou referência regional (opcional)"
+                  placeholder="Ex.: Chapecó, Oeste do PR, Alto Sertão"
                   value={regionReference}
                   onChange={(event) => setRegionReference(event.target.value)}
                   maxLength={80}
@@ -972,6 +1093,12 @@ export default function AlertFormClient() {
             </div>
           )}
 
+          {submitError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              <p className="font-semibold">{submitError}</p>
+            </div>
+          )}
+
           {errors.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               <p className="font-semibold">Complete os campos obrigatórios:</p>
@@ -980,13 +1107,6 @@ export default function AlertFormClient() {
                   <li key={error}>{error}</li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {submitted && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-              <p className="font-semibold">Alerta registrado.</p>
-              <p className="text-slate-800">Dados vinculados ao perfil verificado. Nenhuma outra ação necessária.</p>
             </div>
           )}
 
@@ -1008,8 +1128,8 @@ export default function AlertFormClient() {
                 Próximo
               </Button>
             ) : (
-              <Button type="submit" className="w-full sm:w-auto px-6 py-3 text-base">
-                Registrar alerta
+              <Button type="submit" className="w-full sm:w-auto px-6 py-3 text-base" disabled={isSubmitting}>
+                {isSubmitting ? "Registrando..." : "Registrar alerta"}
               </Button>
             )}
           </div>

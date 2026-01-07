@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { DashboardClient } from "./DashboardClient";
 
 export const metadata = {
@@ -7,5 +8,9 @@ export const metadata = {
 };
 
 export default function DashboardPage() {
-  return <DashboardClient />;
+  return (
+    <Suspense fallback={<div className="px-4 py-10 text-sm text-slate-600">Carregando painel...</div>}>
+      <DashboardClient />
+    </Suspense>
+  );
 }
