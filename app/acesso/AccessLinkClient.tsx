@@ -38,7 +38,7 @@ export default function AccessLinkClient() {
       try {
         await signInWithEmailLink(auth, email, href);
         updateStatus("ready");
-        router.replace("/dashboard");
+        router.replace("/alerta/novo");
       } catch (error) {
         console.error("Erro ao validar link mágico", error);
         updateStatus("error", "Não foi possível validar o link. Solicite um novo convite.");
@@ -64,7 +64,7 @@ export default function AccessLinkClient() {
 
       <Card className="space-y-2 p-6 text-sm text-slate-700">
         {status === "checking" && <p>Verificando o link mágico...</p>}
-        {status === "ready" && <p>Acesso confirmado. Redirecionando para o painel regional...</p>}
+        {status === "ready" && <p>Acesso confirmado. Redirecionando para registrar alerta...</p>}
         {status === "error" && <p className="text-rose-700">{message}</p>}
       </Card>
     </div>
