@@ -115,12 +115,12 @@ export function DashboardVetPanel() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (PILOT_MODE) {
+        // PILOT MODE BYPASS
+        setStatus("ready");
+        return;
+      }
       if (!user) {
-        if (PILOT_MODE) {
-          // PILOT MODE BYPASS
-          setStatus("ready");
-          return;
-        }
         try {
           await ensurePilotAuth();
         } catch (authError) {
