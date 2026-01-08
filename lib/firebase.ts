@@ -13,7 +13,11 @@ const firebaseConfig = {
   appId: "1:687132341294:web:250963ab8cda6db47e9bbf",
 };
 
+// Evita inicializar o Firebase duas vezes (Next.js faz hot reload)
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+// Auth (inclui Anonymous Auth, que você já ativou no console)
 export const auth = getAuth(app);
+
+// Firestore
+export const db = getFirestore(app);
