@@ -10,7 +10,7 @@ import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
-import { db } from "../../../lib/firebase";
+import { auth, db } from "../../../lib/firebase";
 import { stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
@@ -335,6 +335,9 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
+      if (!auth.currentUser) {
+        throw new Error("missing-auth");
+      }
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
