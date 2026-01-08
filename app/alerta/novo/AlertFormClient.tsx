@@ -351,6 +351,9 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
