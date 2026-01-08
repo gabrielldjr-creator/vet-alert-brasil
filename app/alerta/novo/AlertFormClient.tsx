@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -11,8 +10,7 @@ import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
-import { auth, db } from "../../../lib/firebase";
-import { ensurePilotAuth } from "../../../lib/auth";
+import { db } from "../../../lib/firebase";
 import { stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
@@ -222,7 +220,6 @@ function QuickSelect({
 
 export default function AlertFormClient() {
   const router = useRouter();
-  const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
   const [alertGroup, setAlertGroup] = useState(alertCategories[0].group);
@@ -249,53 +246,6 @@ export default function AlertFormClient() {
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        try {
-          await ensurePilotAuth();
-        } catch (authError) {
-          console.error("Erro ao iniciar sessão técnica", authError);
-          setSubmitError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
-          setStatus("restricted");
-        }
-        return;
-      }
-
-      try {
-        const profileRef = doc(db, "vetProfiles", user.uid);
-        const profileSnap = await getDoc(profileRef);
-        if (!profileSnap.exists()) {
-          await setDoc(profileRef, {
-            uid: user.uid,
-            role: "vet",
-            state: "SC",
-            verified: false,
-            createdAt: serverTimestamp(),
-          });
-          setState("SC");
-          setRegionReference("");
-          setStatus("ready");
-          return;
-        }
-
-        const profileData = profileSnap.data() as { state?: string; city?: string };
-        if (profileData?.state) {
-          setState(profileData.state);
-        }
-        if (profileData?.city) {
-          setRegionReference(profileData.city);
-        }
-        setStatus("ready");
-      } catch (error) {
-        console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("restricted");
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const detectRegion = useCallback(async () => {
     setIsDetecting(true);
@@ -384,21 +334,6 @@ export default function AlertFormClient() {
 
     if (missing.length > 0) return;
 
-    let user = auth.currentUser;
-    if (!user) {
-      try {
-        user = await ensurePilotAuth();
-      } catch (authError) {
-        console.error("Erro ao iniciar sessão técnica", authError);
-        setSubmitError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
-        return;
-      }
-    }
-    if (!user) {
-      setSubmitError("Falha ao iniciar sessão.");
-      return;
-    }
-
     setIsSubmitting(true);
     setSubmitError("");
 
@@ -407,7 +342,6 @@ export default function AlertFormClient() {
       await setDoc(alertRef, {
         id: alertRef.id,
         createdAt: serverTimestamp(),
-        vetId: user.uid,
         state,
         city: regionReference.trim() ? regionReference.trim() : undefined,
         species,
@@ -453,20 +387,6 @@ export default function AlertFormClient() {
       setIsSubmitting(false);
     }
   };
-
-  if (status === "checking") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Verificando acesso</p>
-          <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
-        </Card>
-      </div>
-    );
-  }
-
-  if (status === "restricted") {
-  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
