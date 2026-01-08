@@ -322,8 +322,10 @@ export default function AlertFormClient() {
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (
+    event?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event?.preventDefault();
     const missing: string[] = [];
     if (!species) missing.push("Selecione a espécie");
     if (!alertType) missing.push("Escolha o tipo de alerta");
@@ -392,7 +394,7 @@ export default function AlertFormClient() {
       </div>
 
       <Card className="p-6 shadow-sm">
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
             <span>Passo {step + 1} de 6</span>
             <div className="flex gap-2" aria-hidden>
@@ -1026,7 +1028,12 @@ export default function AlertFormClient() {
                 Próximo
               </Button>
             ) : (
-              <Button type="submit" className="w-full sm:w-auto px-6 py-3 text-base" disabled={isSubmitting}>
+              <Button
+                type="button"
+                className="w-full sm:w-auto px-6 py-3 text-base"
+                disabled={isSubmitting}
+                onClick={handleSubmit}
+              >
                 {isSubmitting ? "Registrando..." : "Registrar alerta"}
               </Button>
             )}
