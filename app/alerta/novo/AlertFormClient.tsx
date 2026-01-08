@@ -223,12 +223,15 @@ export default function AlertFormClient() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        signInAnonymously(auth).catch(console.error);
+        signInAnonymously(auth).catch((error) => {
+          console.error("Anonymous login failed:", error);
+        });
       }
     });
-    return () => unsub();
+
+    return () => unsubscribe();
   }, []);
 
   const [species, setSpecies] = useState("");
@@ -348,9 +351,6 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
-      if (!auth.currentUser) {
-        throw new Error("missing-auth");
-      }
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
