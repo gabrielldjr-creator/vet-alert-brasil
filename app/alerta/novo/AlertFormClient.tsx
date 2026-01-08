@@ -10,7 +10,6 @@ import { Card } from "../../../components/Card";
 import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
-import { AccessRestricted } from "../../../components/AccessRestricted";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
 import { ensurePilotAuth } from "../../../lib/auth";
@@ -467,7 +466,6 @@ export default function AlertFormClient() {
   }
 
   if (status === "restricted") {
-    return <AccessRestricted />;
   }
 
   return (
