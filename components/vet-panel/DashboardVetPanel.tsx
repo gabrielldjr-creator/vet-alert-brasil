@@ -13,7 +13,8 @@ import { VetPanelSummary } from "./VetPanelSummary";
 import { VetPanelFeed } from "./VetPanelFeed";
 import { AlertRecord, VetPanelFiltersState } from "./types";
 
-const PILOT_MODE = process.env.NEXT_PUBLIC_PILOT_MODE === "true";
+const PILOT_MODE =
+  process.env.NEXT_PUBLIC_PILOT_MODE === "true" || process.env.NEXT_PUBLIC_PILOT_MODE === "1";
 
 const speciesOptions = [
   "Equinos",
@@ -115,12 +116,15 @@ export function DashboardVetPanel() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      const allowAccess = Boolean(user) || PILOT_MODE;
+
       if (PILOT_MODE) {
         // PILOT MODE BYPASS
         setStatus("ready");
-        return;
       }
+
       if (!user) {
+        if (allowAccess) return;
         try {
           await ensurePilotAuth();
         } catch (authError) {
@@ -131,6 +135,7 @@ export function DashboardVetPanel() {
       }
 
       try {
+        setStatus("ready");
         const profileRef = doc(db, "vetProfiles", user.uid);
         const profileSnap = await getDoc(profileRef);
 
@@ -152,7 +157,9 @@ export function DashboardVetPanel() {
         setStatus("ready");
       } catch (error) {
         console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("restricted");
+        if (!allowAccess) {
+          setStatus("restricted");
+        }
       }
     });
 
