@@ -1,5 +1,4 @@
 import { Card } from "../components/Card";
-import { AccessRestricted } from "../components/AccessRestricted";
 
 export const metadata = {
   title: "Acesso restrito | Vet Alert Brasil",
@@ -45,7 +44,6 @@ export default function Home() {
       </section>
 
       <section className="w-full max-w-xl">
-        <AccessRestricted />
       </section>
     </div>
   );
