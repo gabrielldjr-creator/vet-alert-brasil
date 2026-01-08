@@ -554,9 +554,9 @@ export default function AlertFormClient() {
                 {severityLevels.map((level) => {
                   const selected = severity === level;
                   const severityStyles = {
-                    Atenção: "bg-yellow-50 border-yellow-200 text-yellow-900",
-                    Preocupante: "bg-orange-50 border-orange-200 text-orange-900",
-                    Urgente: "bg-red-50 border-red-200 text-red-900",
+                    Atenção: "bg-yellow-500 border-yellow-500 text-white",
+                    Preocupante: "bg-orange-500 border-orange-500 text-white",
+                    Urgente: "bg-red-500 border-red-500 text-white",
                   } as const;
 
                   return (
