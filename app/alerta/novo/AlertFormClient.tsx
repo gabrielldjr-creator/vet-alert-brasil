@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -10,10 +10,8 @@ import { Card } from "../../../components/Card";
 import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
-import { AccessRestricted } from "../../../components/AccessRestricted";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
-import { ensurePilotAuth } from "../../../lib/auth";
 import { stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
@@ -223,7 +221,19 @@ function QuickSelect({
 
 export default function AlertFormClient() {
   const router = useRouter();
-  const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        signInAnonymously(auth).catch((error) => {
+          console.error("Anonymous login failed:", error);
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const [species, setSpecies] = useState("");
   const [alertType, setAlertType] = useState("");
   const [alertGroup, setAlertGroup] = useState(alertCategories[0].group);
@@ -250,53 +260,6 @@ export default function AlertFormClient() {
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        try {
-          await ensurePilotAuth();
-        } catch (authError) {
-          console.error("Erro ao iniciar sessão técnica", authError);
-          setSubmitError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
-          setStatus("restricted");
-        }
-        return;
-      }
-
-      try {
-        const profileRef = doc(db, "vetProfiles", user.uid);
-        const profileSnap = await getDoc(profileRef);
-        if (!profileSnap.exists()) {
-          await setDoc(profileRef, {
-            uid: user.uid,
-            role: "vet",
-            state: "SC",
-            verified: false,
-            createdAt: serverTimestamp(),
-          });
-          setState("SC");
-          setRegionReference("");
-          setStatus("ready");
-          return;
-        }
-
-        const profileData = profileSnap.data() as { state?: string; city?: string };
-        if (profileData?.state) {
-          setState(profileData.state);
-        }
-        if (profileData?.city) {
-          setRegionReference(profileData.city);
-        }
-        setStatus("ready");
-      } catch (error) {
-        console.error("Erro ao verificar perfil do veterinário", error);
-        setStatus("restricted");
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const detectRegion = useCallback(async () => {
     setIsDetecting(true);
@@ -373,8 +336,10 @@ export default function AlertFormClient() {
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (
+    event?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event?.preventDefault();
     const missing: string[] = [];
     if (!species) missing.push("Selecione a espécie");
     if (!alertType) missing.push("Escolha o tipo de alerta");
@@ -385,34 +350,15 @@ export default function AlertFormClient() {
 
     if (missing.length > 0) return;
 
-    let user = auth.currentUser;
-    if (!user) {
-      try {
-        user = await ensurePilotAuth();
-      } catch (authError) {
-        console.error("Erro ao iniciar sessão técnica", authError);
-        setSubmitError(authError instanceof Error ? authError.message : "Falha ao iniciar sessão.");
-        return;
-      }
-    }
-    if (!user) {
-      setSubmitError("Falha ao iniciar sessão.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError("");
-
     try {
-      const alertRef = doc(collection(db, "alerts"));
-      await setDoc(alertRef, {
-        id: alertRef.id,
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+      await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
-        vetId: user.uid,
         state,
-        city: regionReference.trim() ? regionReference.trim() : undefined,
+        city: regionReference || undefined,
         species,
-        alertType,
         alertGroup,
         severity,
         cases: casesCount,
@@ -444,31 +390,14 @@ export default function AlertFormClient() {
           herdCountLabel: herdCount,
           country,
         },
+        source: "pilot",
       });
 
-      router.push("/dashboard?registrado=1");
+      router.push("/dashboard");
     } catch (error) {
-      console.error("Erro ao registrar alerta", error);
-      setSubmitError("Não foi possível registrar o alerta. Tente novamente.");
-    } finally {
-      setIsSubmitting(false);
+      setSubmitError("Erro ao salvar alerta. Tente novamente.");
     }
   };
-
-  if (status === "checking") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Verificando acesso</p>
-          <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
-        </Card>
-      </div>
-    );
-  }
-
-  if (status === "restricted") {
-    return <AccessRestricted />;
-  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
@@ -479,7 +408,7 @@ export default function AlertFormClient() {
       </div>
 
       <Card className="p-6 shadow-sm">
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
             <span>Passo {step + 1} de 6</span>
             <div className="flex gap-2" aria-hidden>
@@ -628,9 +557,9 @@ export default function AlertFormClient() {
                 {severityLevels.map((level) => {
                   const selected = severity === level;
                   const severityStyles = {
-                    Atenção: "bg-slate-50 border-slate-200 text-slate-900",
-                    Preocupante: "bg-amber-50 border-amber-200 text-amber-900",
-                    Urgente: "bg-red-50 border-red-200 text-red-900",
+                    Atenção: "bg-yellow-500 border-yellow-500 text-white",
+                    Preocupante: "bg-orange-500 border-orange-500 text-white",
+                    Urgente: "bg-red-500 border-red-500 text-white",
                   } as const;
 
                   return (
@@ -1113,7 +1042,12 @@ export default function AlertFormClient() {
                 Próximo
               </Button>
             ) : (
-              <Button type="submit" className="w-full sm:w-auto px-6 py-3 text-base" disabled={isSubmitting}>
+              <Button
+                type="button"
+                className="w-full sm:w-auto px-6 py-3 text-base"
+                disabled={isSubmitting}
+                onClick={handleSubmit}
+              >
                 {isSubmitting ? "Registrando..." : "Registrar alerta"}
               </Button>
             )}

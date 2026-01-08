@@ -1,4 +1,3 @@
-import AccessLinkClient from "./AccessLinkClient";
 
 export const metadata = {
   title: "Acesso por convite | Vet Alert Brasil",
@@ -7,5 +6,4 @@ export const metadata = {
 };
 
 export default function AcessoPage() {
-  return <AccessLinkClient />;
 }
