@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { DashboardClient } from "./DashboardClient";
+import { DashboardVetPanel } from "../../components/vet-panel/DashboardVetPanel";
 
 export const metadata = {
   title: "Painel regional | Vet Alert Brasil",
@@ -10,7 +10,7 @@ export const metadata = {
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div className="px-4 py-10 text-sm text-slate-600">Carregando painel...</div>}>
-      <DashboardClient />
+      <DashboardVetPanel />
     </Suspense>
   );
 }
