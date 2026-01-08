@@ -3,9 +3,10 @@ import { AlertRecord } from "./types";
 
 export type VetPanelFeedProps = {
   alerts: AlertRecord[];
+  totalAlerts: number;
 };
 
-export function VetPanelFeed({ alerts }: VetPanelFeedProps) {
+export function VetPanelFeed({ alerts, totalAlerts }: VetPanelFeedProps) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
@@ -19,8 +20,12 @@ export function VetPanelFeed({ alerts }: VetPanelFeedProps) {
       </div>
       {alerts.length === 0 ? (
         <div className="flex min-h-[200px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center text-slate-600">
-          <p className="font-semibold text-slate-800">Nenhum alerta no período selecionado</p>
-          <p className="text-sm">Ajuste os filtros ou registre novos alertas para atualizar o painel.</p>
+          <p className="font-semibold text-slate-800">Nenhum alerta corresponde aos filtros atuais</p>
+          {totalAlerts > 0 ? (
+            <p className="text-sm">Há {totalAlerts} alertas carregados fora dos filtros selecionados.</p>
+          ) : (
+            <p className="text-sm">Ajuste os filtros ou registre novos alertas para atualizar o painel.</p>
+          )}
         </div>
       ) : (
         <div className="grid gap-3">

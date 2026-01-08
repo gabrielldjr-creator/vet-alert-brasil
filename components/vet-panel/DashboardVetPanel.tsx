@@ -90,6 +90,10 @@ const getAlertTimestamp = (alert: AlertRecord) => {
   return alert.createdAt?.toDate?.() ?? alert.timestamp?.toDate?.();
 };
 
+const normalizeText = (value?: string) => value?.trim().toLowerCase() ?? "";
+
+const normalizeState = (value?: string) => value?.trim().toUpperCase() ?? "";
+
 const getScopeLabel = (scope: VetPanelFiltersState["stateScope"], state?: string) => {
   if (scope === "state" && state) {
     return `no estado ${state}`;
@@ -192,7 +196,7 @@ export function DashboardVetPanel() {
       cutoff.setDate(cutoff.getDate() - 30);
     }
 
-    const state = profile?.state;
+    const state = normalizeState(profile?.state);
     const scopeStates =
       filters.stateScope === "all" || !state
         ? null
@@ -200,11 +204,14 @@ export function DashboardVetPanel() {
 
     return alerts.filter((alert) => {
       const createdAt = getAlertTimestamp(alert);
-      if (!createdAt || createdAt < cutoff) return false;
-      if (scopeStates && (!alert.state || !scopeStates.has(alert.state))) return false;
-      if (filters.species && alert.species !== filters.species) return false;
-      if (filters.alertGroup && alert.alertGroup !== filters.alertGroup) return false;
-      if (filters.severity && alert.severity !== filters.severity) return false;
+      if (createdAt && createdAt < cutoff) return false;
+      if (scopeStates) {
+        const alertState = normalizeState(alert.state);
+        if (!alertState || !scopeStates.has(alertState)) return false;
+      }
+      if (filters.species && normalizeText(alert.species) !== normalizeText(filters.species)) return false;
+      if (filters.alertGroup && normalizeText(alert.alertGroup) !== normalizeText(filters.alertGroup)) return false;
+      if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
       return true;
     });
   }, [alerts, filters, profile?.state]);
@@ -278,7 +285,12 @@ export function DashboardVetPanel() {
               escopo regional, a janela de tempo e filtros rápidos para identificar padrões de atenção.
             </p>
           </div>
-          <Button href="/alerta/novo">Registrar novo alerta</Button>
+          <Button
+            href="/alerta/novo"
+            className="bg-amber-600 text-white shadow-md shadow-amber-200 hover:bg-amber-700 focus-visible:outline-amber-600"
+          >
+            Registrar novo alerta
+          </Button>
         </div>
         {registrationFlag && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
@@ -302,7 +314,7 @@ export function DashboardVetPanel() {
         </Card>
       </section>
 
-      <VetPanelFeed alerts={filteredAlerts} />
+      <VetPanelFeed alerts={filteredAlerts} totalAlerts={alerts.length} />
     </div>
   );
 }
