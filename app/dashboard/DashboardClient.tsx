@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, onSnapshot, orderBy, query, where, setDoc, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
-import { AccessRestricted } from "../../components/AccessRestricted";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Select } from "../../components/Select";
@@ -192,7 +191,6 @@ export function DashboardClient() {
   }
 
   if (status === "restricted") {
-    return <AccessRestricted />;
   }
 
   const stateScope = profile?.state ?? "UF";
