@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -334,18 +334,12 @@ export default function AlertFormClient() {
 
     if (missing.length > 0) return;
 
-    setIsSubmitting(true);
-    setSubmitError("");
-
     try {
-      const alertRef = doc(collection(db, "alerts"));
-      await setDoc(alertRef, {
-        id: alertRef.id,
+      await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
-        city: regionReference.trim() ? regionReference.trim() : undefined,
+        city: regionReference || undefined,
         species,
-        alertType,
         alertGroup,
         severity,
         cases: casesCount,
@@ -377,14 +371,12 @@ export default function AlertFormClient() {
           herdCountLabel: herdCount,
           country,
         },
+        source: "pilot",
       });
 
-      router.push("/dashboard?registrado=1");
+      router.push("/dashboard");
     } catch (error) {
-      console.error("Erro ao registrar alerta", error);
-      setSubmitError("Não foi possível registrar o alerta. Tente novamente.");
-    } finally {
-      setIsSubmitting(false);
+      setSubmitError("Erro ao salvar alerta. Tente novamente.");
     }
   };
 
