@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { AccessButton } from "./AccessButton";
 
 const links = [
   { href: "/dashboard", label: "Painel" },
@@ -33,7 +32,6 @@ export function Header() {
             Acesso restrito a veterinários
           </span>
         </nav>
-        <AccessButton />
       </div>
     </header>
   );
