@@ -1,3 +1,4 @@
+import { Select } from "../Select";
 import { VetPanelFiltersState } from "./types";
 
 type FilterOption = {
@@ -11,6 +12,8 @@ export type VetPanelFiltersProps = {
   stateLabel: string;
   speciesOptions: string[];
   alertGroupOptions: string[];
+  cityOptions: string[];
+  regionGroupOptions: string[];
   severityOptions: string[];
   timeWindowOptions: FilterOption[];
 };
@@ -48,6 +51,8 @@ export function VetPanelFilters({
   stateLabel,
   speciesOptions,
   alertGroupOptions,
+  cityOptions,
+  regionGroupOptions,
   severityOptions,
   timeWindowOptions,
 }: VetPanelFiltersProps) {
@@ -112,6 +117,44 @@ export function VetPanelFilters({
             />
           ))}
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Município</p>
+        <Select
+          label="Cidade"
+          name="cidade"
+          value={filters.city}
+          onChange={(event) => updateFilter({ city: event.target.value, regionGroup: "" })}
+          helper="Filtra por município selecionado."
+          disabled={cityOptions.length === 0}
+        >
+          <option value="">Todos</option>
+          {cityOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Microrregião</p>
+        <Select
+          label="Região"
+          name="regiao"
+          value={filters.regionGroup}
+          onChange={(event) => updateFilter({ regionGroup: event.target.value })}
+          helper="Usa a microrregião do IBGE para agrupar municípios."
+          disabled={regionGroupOptions.length === 0}
+        >
+          <option value="">Todas</option>
+          {regionGroupOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <div className="space-y-3">
