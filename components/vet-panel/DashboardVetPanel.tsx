@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, onSnapshot, orderBy, query, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, setDoc, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
 import { Button } from "../Button";
@@ -174,15 +174,42 @@ export function DashboardVetPanel() {
     if (status !== "ready") return;
 
     const baseQuery = query(collection(db, "alerts"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(baseQuery, (snapshot) => {
-      const data = snapshot.docs.map((docSnap) => ({
-        ...(docSnap.data() as AlertRecord),
-        id: docSnap.id,
-      }));
-      setAlerts(data);
-    });
+    let isActive = true;
 
-    return () => unsubscribe();
+    const loadInitialAlerts = async () => {
+      try {
+        const snapshot = await getDocs(baseQuery);
+        if (!isActive) return;
+        const data = snapshot.docs.map((docSnap) => ({
+          ...(docSnap.data() as AlertRecord),
+          id: docSnap.id,
+        }));
+        setAlerts(data);
+      } catch (error) {
+        console.error("Erro ao carregar alertas", error);
+      }
+    };
+
+    loadInitialAlerts();
+
+    const unsubscribe = onSnapshot(
+      baseQuery,
+      (snapshot) => {
+        const data = snapshot.docs.map((docSnap) => ({
+          ...(docSnap.data() as AlertRecord),
+          id: docSnap.id,
+        }));
+        setAlerts(data);
+      },
+      (error) => {
+        console.error("Erro ao sincronizar alertas", error);
+      }
+    );
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, [status]);
 
   const filteredAlerts = useMemo(() => {
