@@ -27,11 +27,7 @@ export default function Home() {
           <Button href="/alerta/novo" className="w-full sm:w-auto px-6 py-3 text-base">
             Registrar alerta
           </Button>
-          <Button
-            href="/painel"
-            variant="secondary"
-            className="w-full sm:w-auto px-6 py-3 text-base"
-          >
+          <Button href="/dashboard" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
             Ver painel de alertas
           </Button>
         </div>
@@ -81,9 +77,9 @@ export default function Home() {
         <Card className="space-y-3 p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Adicionar à tela inicial</p>
           <ul className="space-y-2 text-sm text-slate-700">
-            <li>• Funciona como app no celular</li>
-            <li>• Acesso rápido durante o dia</li>
-            <li>• Sem login diário</li>
+            <li>1) No iPhone: toque em Compartilhar → “Adicionar à Tela de Início”.</li>
+            <li>2) No Android: toque em ⋮ → “Instalar app” ou “Adicionar à tela inicial”.</li>
+            <li>3) Abra como app e use sem login diário.</li>
           </ul>
         </Card>
       </section>
