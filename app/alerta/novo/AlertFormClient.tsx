@@ -33,6 +33,7 @@ const alertCategories = [
       "Síndrome digestiva",
       "Lesões cutâneas / teciduais",
       "Alterações reprodutivas",
+      "Quadro parasitário / falha de controle parasitário",
       "Morte súbita sem causa aparente",
     ],
   },
@@ -95,6 +96,7 @@ const pharmaSensitiveAlerts = new Set([
   "Aumento anormal da mortalidade",
   "Síndrome neurológica com agressividade",
   "Síndrome febril com icterícia",
+  "Quadro parasitário / falha de controle parasitário",
 ]);
 
 const environmentalAlerts = new Set([
@@ -157,6 +159,15 @@ const detailOptions: Record<string, string[]> = {
   "Sinais neurológicos": ["Ataxia", "Tremores", "Convulsões", "Paralisia", "Alteração comportamental"],
   "Lesões cutâneas / teciduais": ["Necrose", "Úlceras", "Edema", "Dermatite"],
   "Alterações reprodutivas": ["Abortos", "Infertilidade", "Retenção de placenta", "Natimortos"],
+  "Quadro parasitário / falha de controle parasitário": [
+    "Alta carga parasitária",
+    "Falha após vermifugação recente",
+    "Recidiva rápida",
+    "Perda de escore corporal",
+    "Anemia / mucosas pálidas",
+    "Prurido intenso",
+    "Parasitas visíveis",
+  ],
 };
 
 const buttonBaseStyles =
