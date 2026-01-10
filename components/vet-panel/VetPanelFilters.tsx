@@ -12,8 +12,8 @@ export type VetPanelFiltersProps = {
   stateLabel: string;
   speciesOptions: string[];
   alertGroupOptions: string[];
-  cityOptions: string[];
-  regionGroupOptions: string[];
+  municipalityOptions: string[];
+  regionIBGEOptions: string[];
   severityOptions: string[];
   timeWindowOptions: FilterOption[];
 };
@@ -51,8 +51,8 @@ export function VetPanelFilters({
   stateLabel,
   speciesOptions,
   alertGroupOptions,
-  cityOptions,
-  regionGroupOptions,
+  municipalityOptions,
+  regionIBGEOptions,
   severityOptions,
   timeWindowOptions,
 }: VetPanelFiltersProps) {
@@ -122,15 +122,15 @@ export function VetPanelFilters({
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Município</p>
         <Select
-          label="Cidade"
-          name="cidade"
-          value={filters.city}
-          onChange={(event) => updateFilter({ city: event.target.value, regionGroup: "" })}
+          label="Município"
+          name="municipio"
+          value={filters.municipality}
+          onChange={(event) => updateFilter({ municipality: event.target.value })}
           helper="Filtra por município selecionado."
-          disabled={cityOptions.length === 0}
+          disabled={municipalityOptions.length === 0}
         >
-          <option value="">Todos</option>
-          {cityOptions.map((option) => (
+          <option value="all">Todos</option>
+          {municipalityOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -139,17 +139,17 @@ export function VetPanelFilters({
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Microrregião</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Região (epidemiológica)</p>
         <Select
-          label="Região"
-          name="regiao"
-          value={filters.regionGroup}
-          onChange={(event) => updateFilter({ regionGroup: event.target.value })}
-          helper="Usa a microrregião do IBGE para agrupar municípios."
-          disabled={regionGroupOptions.length === 0}
+          label="Região (epidemiológica)"
+          name="regiao-epidemiologica"
+          value={filters.regionIBGE}
+          onChange={(event) => updateFilter({ regionIBGE: event.target.value })}
+          helper="Usa a região epidemiológica do IBGE para agrupar municípios."
+          disabled={regionIBGEOptions.length === 0}
         >
-          <option value="">Todas</option>
-          {regionGroupOptions.map((option) => (
+          <option value="all">Todas</option>
+          {regionIBGEOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
