@@ -10,5 +10,10 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+    match /doctors/{doctorUid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == doctorUid;
+      allow delete: if false;
+    }
   }
 }
