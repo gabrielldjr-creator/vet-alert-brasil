@@ -371,8 +371,10 @@ export default function AlertFormClient() {
         city: regionReference || undefined,
         species,
         alertGroup,
+        alertType,
         severity,
         cases: casesCount,
+        herdCount,
         context: {
           alertDetails,
           notes: notes.trim() ? notes.trim() : "",

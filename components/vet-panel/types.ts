@@ -8,7 +8,30 @@ export type AlertRecord = {
   alertType?: string;
   alertGroup?: string;
   severity?: string;
+  cases?: number;
   herdCount?: string;
+  context?: {
+    alertDetails?: string[];
+    notes?: string;
+    eventOnset?: string;
+    recentChanges?: string;
+    feed?: {
+      feedChange?: string;
+      feedType?: string;
+      feedOrigin?: string;
+    } | null;
+    pharma?: {
+      drugExposure?: string;
+      drugCategory?: string;
+      drugInterval?: string;
+    } | null;
+    environment?: {
+      environmentSignals?: string[];
+      regionalPattern?: string;
+    } | null;
+    herdCountLabel?: string;
+    country?: string;
+  };
 };
 
 export type VetPanelFiltersState = {
