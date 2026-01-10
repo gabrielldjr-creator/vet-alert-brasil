@@ -40,8 +40,9 @@ export function AlertCard({ alert }: AlertCardProps) {
   const signalLabel = alert.alertType || alert.alertGroup || "Sinal relatado";
   const speciesLabel = alert.species || "Espécie não informada";
   const stateLabel = alert.state || "UF";
-  const cityLabel = alert.cityName || alert.city;
-  const regionGroupLabel = alert.regionGroup;
+  const regionLabel = alert.regionIBGE || alert.regionGroup;
+  const municipalityLabel = alert.municipality || alert.cityName || alert.city;
+  const localidadeLabel = alert.localidadeAproximada;
   const herdCountLabel = alert.context?.herdCountLabel ?? alert.herdCount;
   const casesLabel = alert.cases ? `${alert.cases} casos` : herdCountLabel ? `${herdCountLabel} casos` : "Casos não informados";
   const detailsLabel = alert.context?.alertDetails?.length ? alert.context.alertDetails.join(", ") : null;
@@ -61,10 +62,10 @@ export function AlertCard({ alert }: AlertCardProps) {
         {alert.alertGroup && alert.alertType && (
           <p className="text-xs text-slate-500">{alert.alertGroup}</p>
         )}
-        {cityLabel && (
+        {(regionLabel || municipalityLabel) && (
           <p className="text-xs text-slate-500">
-            {cityLabel}
-            {regionGroupLabel ? ` • ${regionGroupLabel}` : ""}
+            {[stateLabel, regionLabel, municipalityLabel].filter(Boolean).join(" • ")}
+            {localidadeLabel ? ` — ${localidadeLabel}` : ""}
           </p>
         )}
       </div>

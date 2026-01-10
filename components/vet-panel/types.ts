@@ -7,6 +7,9 @@ export type AlertRecord = {
   cityCode?: number;
   cityName?: string;
   regionGroup?: string;
+  regionIBGE?: string;
+  municipality?: string;
+  localidadeAproximada?: string;
   species?: string;
   alertType?: string;
   alertGroup?: string;
