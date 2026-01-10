@@ -12,7 +12,7 @@ import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
-import { stateOptions } from "../../../lib/regions";
+import { fetchMunicipalities, MunicipalityOption, stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
   "Equinos",
@@ -253,7 +253,12 @@ export default function AlertFormClient() {
   const [severity, setSeverity] = useState("");
   const [state, setState] = useState("SC");
   const [country, setCountry] = useState("Brasil");
-  const [regionReference, setRegionReference] = useState("");
+  const [cityOptions, setCityOptions] = useState<MunicipalityOption[]>([]);
+  const [cityCode, setCityCode] = useState("");
+  const [cityName, setCityName] = useState("");
+  const [regionGroup, setRegionGroup] = useState("");
+  const [cityError, setCityError] = useState("");
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [locationMessage, setLocationMessage] = useState("Detectando região...");
   const [isDetecting, setIsDetecting] = useState(false);
   const [notes, setNotes] = useState("");
@@ -297,6 +302,62 @@ export default function AlertFormClient() {
   const showsPharmaModule = pharmaSensitiveAlerts.has(alertType);
   const showsEnvironmentalModule =
     environmentalAlerts.has(alertType) || alertGroup === "Ambientais / Toxicológicos";
+
+  const regionGroupOptions = useMemo(() => {
+    const groups = new Set(
+      cityOptions.map((city) => city.microregion).filter((value): value is string => Boolean(value))
+    );
+    return Array.from(groups).sort((a, b) => a.localeCompare(b));
+  }, [cityOptions]);
+
+  const handleCityChange = (nextCode: string) => {
+    setCityCode(nextCode);
+    if (!nextCode) {
+      setCityName("");
+      return;
+    }
+    const match = cityOptions.find((city) => city.code.toString() === nextCode);
+    if (match) {
+      setCityName(match.name);
+      setRegionGroup((current) => current || match.microregion || "");
+    }
+  };
+
+  useEffect(() => {
+    let isActive = true;
+    if (!state) {
+      setCityOptions([]);
+      setCityCode("");
+      setCityName("");
+      setRegionGroup("");
+      setCityError("");
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setIsLoadingCities(true);
+    setCityError("");
+    fetchMunicipalities(state)
+      .then((options) => {
+        if (!isActive) return;
+        setCityOptions(options);
+      })
+      .catch((error) => {
+        console.error("Erro ao carregar municípios", error);
+        if (!isActive) return;
+        setCityOptions([]);
+        setCityError("Não foi possível carregar municípios para este estado.");
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setIsLoadingCities(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [state]);
 
   const goNext = () => setStep((current) => Math.min(current + 1, 5));
   const goBack = () => setStep((current) => Math.max(current - 1, 0));
@@ -356,6 +417,7 @@ export default function AlertFormClient() {
     if (!alertType) missing.push("Escolha o tipo de alerta");
     if (!herdCount) missing.push("Informe número de animais afetados");
     if (!state) missing.push("Confirme o estado");
+    if (!cityCode) missing.push("Selecione o município");
     if (!severity) missing.push("Classifique a gravidade");
     setErrors(missing);
 
@@ -368,7 +430,10 @@ export default function AlertFormClient() {
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
-        city: regionReference || undefined,
+        city: cityName || undefined,
+        cityCode: cityCode ? Number(cityCode) : undefined,
+        cityName: cityName || undefined,
+        regionGroup: regionGroup || undefined,
         species,
         alertGroup,
         alertType,
@@ -916,14 +981,14 @@ export default function AlertFormClient() {
             <div className="space-y-5">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Região e envio</p>
-                <p className="text-sm text-slate-600">Somente país + estado, sem endereço.</p>
+                <p className="text-sm text-slate-600">País, estado e município. Nunca endereço.</p>
               </div>
 
               <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Região</p>
-                    <p className="text-xs text-slate-600">País e estado apenas.</p>
+                    <p className="text-xs text-slate-600">UF + município, sem endereço exato.</p>
                   </div>
                   <Button
                     type="button"
@@ -952,7 +1017,7 @@ export default function AlertFormClient() {
                     value={state}
                     onChange={(event) => setState(event.target.value)}
                     aria-label="Estado"
-                    helper="Sem município ou endereço."
+                    helper="Use o estado CRMV."
                     required
                   >
                     {stateOptions.map((uf) => (
@@ -963,15 +1028,39 @@ export default function AlertFormClient() {
                   </Select>
                 </div>
 
-                <Input
-                  name="regionReference"
-                  label="Cidade ou referência regional (opcional)"
-                  placeholder="Ex.: Chapecó, Oeste do PR, Alto Sertão"
-                  value={regionReference}
-                  onChange={(event) => setRegionReference(event.target.value)}
-                  maxLength={80}
-                  helper="Nunca pedir endereço exato."
-                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Select
+                    name="city"
+                    label="Município"
+                    value={cityCode}
+                    onChange={(event) => handleCityChange(event.target.value)}
+                    helper={cityError || "Selecione o município para clusters locais."}
+                    disabled={!state || isLoadingCities}
+                    required
+                  >
+                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione"}</option>
+                    {cityOptions.map((city) => (
+                      <option key={city.code} value={city.code}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    name="regionGroup"
+                    label="Região / microrregião (opcional)"
+                    value={regionGroup}
+                    onChange={(event) => setRegionGroup(event.target.value)}
+                    helper="Agrupa municípios próximos para análise epidemiológica."
+                    disabled={regionGroupOptions.length === 0}
+                  >
+                    <option value="">Selecione (opcional)</option>
+                    {regionGroupOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
 
                 <div className="rounded-xl bg-white p-3 text-sm text-slate-800 shadow-inner">
                   <p className="font-semibold text-emerald-800">{locationMessage}</p>
@@ -1015,6 +1104,8 @@ export default function AlertFormClient() {
                   <li>
                     • Região: {country} / {state}
                   </li>
+                  <li>• Município: {cityName || "—"}</li>
+                  {regionGroup && <li>• Microrregião: {regionGroup}</li>}
                 </ul>
               </div>
             </div>

@@ -40,6 +40,8 @@ export function AlertCard({ alert }: AlertCardProps) {
   const signalLabel = alert.alertType || alert.alertGroup || "Sinal relatado";
   const speciesLabel = alert.species || "Espécie não informada";
   const stateLabel = alert.state || "UF";
+  const cityLabel = alert.cityName || alert.city;
+  const regionGroupLabel = alert.regionGroup;
   const herdCountLabel = alert.context?.herdCountLabel ?? alert.herdCount;
   const casesLabel = alert.cases ? `${alert.cases} casos` : herdCountLabel ? `${herdCountLabel} casos` : "Casos não informados";
   const detailsLabel = alert.context?.alertDetails?.length ? alert.context.alertDetails.join(", ") : null;
@@ -58,6 +60,67 @@ export function AlertCard({ alert }: AlertCardProps) {
         <p className="text-sm text-slate-700">{signalLabel}</p>
         {alert.alertGroup && alert.alertType && (
           <p className="text-xs text-slate-500">{alert.alertGroup}</p>
+        )}
+        {cityLabel && (
+          <p className="text-xs text-slate-500">
+            {cityLabel}
+            {regionGroupLabel ? ` • ${regionGroupLabel}` : ""}
+          </p>
+        )}
+      </div>
+      <div className="mt-3 space-y-2 text-xs text-slate-700">
+        {detailsLabel && (
+          <p>
+            <span className="font-semibold text-slate-800">Detalhes rápidos:</span> {detailsLabel}
+          </p>
+        )}
+        {alert.context?.eventOnset && (
+          <p>
+            <span className="font-semibold text-slate-800">Início observado:</span> {alert.context.eventOnset}
+          </p>
+        )}
+        {alert.context?.recentChanges && (
+          <p>
+            <span className="font-semibold text-slate-800">Mudanças recentes:</span> {alert.context.recentChanges}
+          </p>
+        )}
+        {(alert.context?.feed?.feedChange || alert.context?.feed?.feedType || alert.context?.feed?.feedOrigin) && (
+          <div>
+            <p className="font-semibold text-slate-800">Alimentação</p>
+            <ul className="mt-1 space-y-1">
+              {alert.context.feed?.feedChange && <li>• Mudança: {alert.context.feed.feedChange}</li>}
+              {alert.context.feed?.feedType && <li>• Tipo: {alert.context.feed.feedType}</li>}
+              {alert.context.feed?.feedOrigin && <li>• Origem: {alert.context.feed.feedOrigin}</li>}
+            </ul>
+          </div>
+        )}
+        {(alert.context?.pharma?.drugExposure ||
+          alert.context?.pharma?.drugCategory ||
+          alert.context?.pharma?.drugInterval) && (
+          <div>
+            <p className="font-semibold text-slate-800">Medicamentos / vacinas</p>
+            <ul className="mt-1 space-y-1">
+              {alert.context.pharma?.drugExposure && <li>• Exposição: {alert.context.pharma.drugExposure}</li>}
+              {alert.context.pharma?.drugCategory && <li>• Categoria: {alert.context.pharma.drugCategory}</li>}
+              {alert.context.pharma?.drugInterval && <li>• Intervalo: {alert.context.pharma.drugInterval}</li>}
+            </ul>
+          </div>
+        )}
+        {(environmentSignalsLabel || alert.context?.environment?.regionalPattern) && (
+          <div>
+            <p className="font-semibold text-slate-800">Ambiente</p>
+            <ul className="mt-1 space-y-1">
+              {environmentSignalsLabel && <li>• Sinais: {environmentSignalsLabel}</li>}
+              {alert.context?.environment?.regionalPattern && (
+                <li>• Padrão regional: {alert.context.environment.regionalPattern}</li>
+              )}
+            </ul>
+          </div>
+        )}
+        {alert.context?.notes && (
+          <p>
+            <span className="font-semibold text-slate-800">Observações:</span> {alert.context.notes}
+          </p>
         )}
       </div>
       <div className="mt-3 space-y-2 text-xs text-slate-700">

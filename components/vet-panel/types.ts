@@ -4,6 +4,9 @@ export type AlertRecord = {
   timestamp?: { toDate: () => Date };
   state?: string;
   city?: string;
+  cityCode?: number;
+  cityName?: string;
+  regionGroup?: string;
   species?: string;
   alertType?: string;
   alertGroup?: string;
@@ -39,5 +42,7 @@ export type VetPanelFiltersState = {
   species: string;
   alertGroup: string;
   severity: string;
+  city: string;
+  regionGroup: string;
   timeWindow: "24h" | "7d" | "30d";
 };

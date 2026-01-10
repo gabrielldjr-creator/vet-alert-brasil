@@ -113,6 +113,8 @@ export function DashboardVetPanel() {
     species: "",
     alertGroup: "",
     severity: "",
+    city: "",
+    regionGroup: "",
     timeWindow: "7d",
   });
   const searchParams = useSearchParams();
@@ -212,7 +214,7 @@ export function DashboardVetPanel() {
     };
   }, [status]);
 
-  const filteredAlerts = useMemo(() => {
+  const scopedAlerts = useMemo(() => {
     const now = Date.now();
     const cutoff = new Date(now);
     if (filters.timeWindow === "24h") {
@@ -236,12 +238,53 @@ export function DashboardVetPanel() {
         const alertState = normalizeState(alert.state);
         if (!alertState || !scopeStates.has(alertState)) return false;
       }
+      return true;
+    });
+  }, [alerts, filters.timeWindow, filters.stateScope, profile?.state]);
+
+  const cityOptions = useMemo(() => {
+    const entries = new Map<string, string>();
+    scopedAlerts.forEach((alert) => {
+      const name = alert.cityName || alert.city;
+      if (!name) return;
+      const key = normalizeText(name);
+      if (!entries.has(key)) {
+        entries.set(key, name);
+      }
+    });
+    return Array.from(entries.values()).sort((a, b) => a.localeCompare(b));
+  }, [scopedAlerts]);
+
+  const regionGroupOptions = useMemo(() => {
+    const entries = new Map<string, string>();
+    scopedAlerts.forEach((alert) => {
+      if (filters.city) {
+        const cityLabel = normalizeText(alert.cityName || alert.city);
+        if (cityLabel !== normalizeText(filters.city)) return;
+      }
+      const group = alert.regionGroup;
+      if (!group) return;
+      const key = normalizeText(group);
+      if (!entries.has(key)) {
+        entries.set(key, group);
+      }
+    });
+    return Array.from(entries.values()).sort((a, b) => a.localeCompare(b));
+  }, [scopedAlerts, filters.city]);
+
+  const filteredAlerts = useMemo(() => {
+    return scopedAlerts.filter((alert) => {
       if (filters.species && normalizeText(alert.species) !== normalizeText(filters.species)) return false;
       if (filters.alertGroup && normalizeText(alert.alertGroup) !== normalizeText(filters.alertGroup)) return false;
       if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
+      if (filters.city) {
+        const cityLabel = normalizeText(alert.cityName || alert.city);
+        if (cityLabel !== normalizeText(filters.city)) return false;
+      }
+      if (filters.regionGroup && normalizeText(alert.regionGroup) !== normalizeText(filters.regionGroup)) return false;
       return true;
     });
-  }, [alerts, filters, profile?.state]);
+  }, [filters, scopedAlerts]);
 
   const summaryLines = useMemo(() => {
     if (filteredAlerts.length === 0) return [];
@@ -335,6 +378,8 @@ export function DashboardVetPanel() {
             stateLabel={stateScope}
             speciesOptions={speciesOptions}
             alertGroupOptions={alertGroupOptions}
+            cityOptions={cityOptions}
+            regionGroupOptions={regionGroupOptions}
             severityOptions={severityOptions}
             timeWindowOptions={timeWindowOptions}
           />
