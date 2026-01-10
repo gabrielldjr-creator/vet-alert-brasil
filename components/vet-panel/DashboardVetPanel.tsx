@@ -244,7 +244,7 @@ export function DashboardVetPanel() {
 
   const municipalityOptions = useMemo(() => {
     const entries = new Map<string, string>();
-    scopedAlerts.forEach((alert) => {
+    alerts.forEach((alert) => {
       const name = alert.municipality || alert.cityName || alert.city;
       if (!name) return;
       const key = normalizeText(name);
@@ -253,11 +253,11 @@ export function DashboardVetPanel() {
       }
     });
     return Array.from(entries.values()).sort((a, b) => a.localeCompare(b));
-  }, [scopedAlerts]);
+  }, [alerts]);
 
   const regionIBGEOptions = useMemo(() => {
     const entries = new Map<string, string>();
-    scopedAlerts.forEach((alert) => {
+    alerts.forEach((alert) => {
       const group = alert.regionIBGE;
       if (!group) return;
       const key = normalizeText(group);
@@ -266,7 +266,7 @@ export function DashboardVetPanel() {
       }
     });
     return Array.from(entries.values()).sort((a, b) => a.localeCompare(b));
-  }, [scopedAlerts]);
+  }, [alerts]);
 
   const filteredAlerts = useMemo(() => {
     return scopedAlerts.filter((alert) => {
