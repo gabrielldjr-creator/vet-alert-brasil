@@ -12,7 +12,7 @@ import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
 import { auth, db } from "../../../lib/firebase";
-import { stateOptions } from "../../../lib/regions";
+import { fetchMunicipalities, MunicipalityOption, stateOptions } from "../../../lib/regions";
 
 const speciesOptions = [
   "Equinos",
@@ -33,6 +33,7 @@ const alertCategories = [
       "Síndrome digestiva",
       "Lesões cutâneas / teciduais",
       "Alterações reprodutivas",
+      "Quadro parasitário / falha de controle parasitário",
       "Morte súbita sem causa aparente",
     ],
   },
@@ -95,6 +96,7 @@ const pharmaSensitiveAlerts = new Set([
   "Aumento anormal da mortalidade",
   "Síndrome neurológica com agressividade",
   "Síndrome febril com icterícia",
+  "Quadro parasitário / falha de controle parasitário",
 ]);
 
 const environmentalAlerts = new Set([
@@ -157,6 +159,15 @@ const detailOptions: Record<string, string[]> = {
   "Sinais neurológicos": ["Ataxia", "Tremores", "Convulsões", "Paralisia", "Alteração comportamental"],
   "Lesões cutâneas / teciduais": ["Necrose", "Úlceras", "Edema", "Dermatite"],
   "Alterações reprodutivas": ["Abortos", "Infertilidade", "Retenção de placenta", "Natimortos"],
+  "Quadro parasitário / falha de controle parasitário": [
+    "Alta carga parasitária",
+    "Falha após vermifugação recente",
+    "Recidiva rápida",
+    "Perda de escore corporal",
+    "Anemia / mucosas pálidas",
+    "Prurido intenso",
+    "Parasitas visíveis",
+  ],
 };
 
 const buttonBaseStyles =
@@ -242,7 +253,13 @@ export default function AlertFormClient() {
   const [severity, setSeverity] = useState("");
   const [state, setState] = useState("SC");
   const [country, setCountry] = useState("Brasil");
-  const [regionReference, setRegionReference] = useState("");
+  const [cityOptions, setCityOptions] = useState<MunicipalityOption[]>([]);
+  const [cityCode, setCityCode] = useState("");
+  const [cityName, setCityName] = useState("");
+  const [regionIBGE, setRegionIBGE] = useState("");
+  const [localidadeAproximada, setLocalidadeAproximada] = useState("");
+  const [cityError, setCityError] = useState("");
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [locationMessage, setLocationMessage] = useState("Detectando região...");
   const [isDetecting, setIsDetecting] = useState(false);
   const [notes, setNotes] = useState("");
@@ -286,6 +303,67 @@ export default function AlertFormClient() {
   const showsPharmaModule = pharmaSensitiveAlerts.has(alertType);
   const showsEnvironmentalModule =
     environmentalAlerts.has(alertType) || alertGroup === "Ambientais / Toxicológicos";
+
+  const regionIBGEOptions = useMemo(() => {
+    const groups = new Set(
+      cityOptions.map((city) => city.microregion).filter((value): value is string => Boolean(value))
+    );
+    return Array.from(groups).sort((a, b) => a.localeCompare(b));
+  }, [cityOptions]);
+
+  const filteredMunicipalities = useMemo(() => {
+    if (!regionIBGE) return [];
+    return cityOptions.filter((city) => city.microregion === regionIBGE);
+  }, [cityOptions, regionIBGE]);
+
+  const handleMunicipalityChange = (nextCode: string) => {
+    setCityCode(nextCode);
+    if (!nextCode) {
+      setCityName("");
+      return;
+    }
+    const match = cityOptions.find((city) => city.code.toString() === nextCode);
+    if (match) {
+      setCityName(match.name);
+    }
+  };
+
+  useEffect(() => {
+    let isActive = true;
+    if (!state) {
+      setCityOptions([]);
+      setCityCode("");
+      setCityName("");
+      setRegionIBGE("");
+      setLocalidadeAproximada("");
+      setCityError("");
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setIsLoadingCities(true);
+    setCityError("");
+    fetchMunicipalities(state)
+      .then((options) => {
+        if (!isActive) return;
+        setCityOptions(options);
+      })
+      .catch((error) => {
+        console.error("Erro ao carregar municípios", error);
+        if (!isActive) return;
+        setCityOptions([]);
+        setCityError("Não foi possível carregar municípios para este estado.");
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setIsLoadingCities(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [state]);
 
   const goNext = () => setStep((current) => Math.min(current + 1, 5));
   const goBack = () => setStep((current) => Math.max(current - 1, 0));
@@ -345,6 +423,8 @@ export default function AlertFormClient() {
     if (!alertType) missing.push("Escolha o tipo de alerta");
     if (!herdCount) missing.push("Informe número de animais afetados");
     if (!state) missing.push("Confirme o estado");
+    if (!regionIBGE) missing.push("Selecione a região (IBGE / epidemiológica)");
+    if (!cityCode) missing.push("Selecione o município");
     if (!severity) missing.push("Classifique a gravidade");
     setErrors(missing);
 
@@ -357,11 +437,19 @@ export default function AlertFormClient() {
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
-        city: regionReference || undefined,
+        regionIBGE: regionIBGE || undefined,
+        municipality: cityName || undefined,
+        localidadeAproximada: localidadeAproximada ? localidadeAproximada.trim() : undefined,
+        city: cityName || undefined,
+        cityCode: cityCode ? Number(cityCode) : undefined,
+        cityName: cityName || undefined,
+        regionGroup: regionIBGE || undefined,
         species,
         alertGroup,
+        alertType,
         severity,
         cases: casesCount,
+        herdCount,
         context: {
           alertDetails,
           notes: notes.trim() ? notes.trim() : "",
@@ -903,14 +991,14 @@ export default function AlertFormClient() {
             <div className="space-y-5">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Região e envio</p>
-                <p className="text-sm text-slate-600">Somente país + estado, sem endereço.</p>
+                <p className="text-sm text-slate-600">País, estado e município. Nunca endereço.</p>
               </div>
 
               <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Região</p>
-                    <p className="text-xs text-slate-600">País e estado apenas.</p>
+                    <p className="text-xs text-slate-600">UF + município, sem endereço exato.</p>
                   </div>
                   <Button
                     type="button"
@@ -939,7 +1027,7 @@ export default function AlertFormClient() {
                     value={state}
                     onChange={(event) => setState(event.target.value)}
                     aria-label="Estado"
-                    helper="Sem município ou endereço."
+                    helper="Use o estado CRMV."
                     required
                   >
                     {stateOptions.map((uf) => (
@@ -950,14 +1038,53 @@ export default function AlertFormClient() {
                   </Select>
                 </div>
 
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Select
+                    name="regionIBGE"
+                    label="Região (IBGE / epidemiológica)"
+                    value={regionIBGE}
+                    onChange={(event) => {
+                      setRegionIBGE(event.target.value);
+                      setCityCode("");
+                      setCityName("");
+                    }}
+                    helper="Agrupa municípios em polos epidemiológicos."
+                    disabled={!state || isLoadingCities}
+                    required
+                  >
+                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione"}</option>
+                    {regionIBGEOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    name="city"
+                    label="Município"
+                    value={cityCode}
+                    onChange={(event) => handleMunicipalityChange(event.target.value)}
+                    helper={cityError || "Selecione o município para clusters locais."}
+                    disabled={!regionIBGE || isLoadingCities}
+                    required
+                  >
+                    <option value="">{regionIBGE ? "Selecione" : "Selecione a região"}</option>
+                    {filteredMunicipalities.map((city) => (
+                      <option key={city.code} value={city.code}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
                 <Input
-                  name="regionReference"
-                  label="Cidade ou referência regional (opcional)"
-                  placeholder="Ex.: Chapecó, Oeste do PR, Alto Sertão"
-                  value={regionReference}
-                  onChange={(event) => setRegionReference(event.target.value)}
+                  name="localidadeAproximada"
+                  label="Localidade aproximada (opcional)"
+                  placeholder="Ex.: zona rural norte, bairro centro, interior"
+                  value={localidadeAproximada}
+                  onChange={(event) => setLocalidadeAproximada(event.target.value)}
                   maxLength={80}
-                  helper="Nunca pedir endereço exato."
+                  helper="Não informar endereço exato."
                 />
 
                 <div className="rounded-xl bg-white p-3 text-sm text-slate-800 shadow-inner">
@@ -1002,6 +1129,9 @@ export default function AlertFormClient() {
                   <li>
                     • Região: {country} / {state}
                   </li>
+                  <li>• Região (IBGE): {regionIBGE || "—"}</li>
+                  <li>• Município: {cityName || "—"}</li>
+                  {localidadeAproximada && <li>• Localidade aproximada: {localidadeAproximada}</li>}
                 </ul>
               </div>
             </div>
