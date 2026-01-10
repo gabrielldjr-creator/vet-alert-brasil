@@ -20,7 +20,7 @@ export default function Home() {
           </h1>
           <p className="max-w-2xl text-lg text-slate-700">
             Registre sinais observados no consultório ou na fazenda e acompanhe padrões regionais em tempo real. Alertas 100% anônimos
-            e sem orientação clínica.
+            e sem orientação clínica. Gratuito para veterinários.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
