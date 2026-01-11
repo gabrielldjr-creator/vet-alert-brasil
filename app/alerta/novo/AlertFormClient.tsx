@@ -240,6 +240,10 @@ export default function AlertFormClient() {
         signInAnonymously(auth).catch((error) => {
           console.error("Falha ao iniciar sessão anônima:", error);
         });
+      } else {
+        user.getIdToken().catch((error) => {
+          console.error("Falha ao obter token de autenticação:", error);
+        });
       }
     });
 
@@ -432,12 +436,8 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
-      try {
-        await ensurePilotAuth();
-      } catch (error) {
-        console.error("Falha ao iniciar sessão:", error);
-        await signInAnonymously(auth);
-      }
+      const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
+      await user.getIdToken();
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
@@ -487,6 +487,7 @@ export default function AlertFormClient() {
 
       router.push("/dashboard");
     } catch (error) {
+      console.error("Erro ao salvar alerta:", error);
       setSubmitError("Erro ao salvar alerta. Tente novamente.");
     }
   };
