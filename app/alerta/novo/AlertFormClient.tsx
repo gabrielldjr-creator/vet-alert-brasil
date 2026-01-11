@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
@@ -11,6 +11,7 @@ import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
+import { ensurePilotAuth } from "../../../lib/auth";
 import { auth, db } from "../../../lib/firebase";
 import { fetchMunicipalities, MunicipalityOption, stateOptions } from "../../../lib/regions";
 
@@ -236,8 +237,8 @@ export default function AlertFormClient() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        signInAnonymously(auth).catch((error) => {
-          console.error("Anonymous login failed:", error);
+        ensurePilotAuth().catch((error) => {
+          console.error("Falha ao iniciar sessão:", error);
         });
       }
     });
@@ -431,9 +432,7 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
-      if (!auth.currentUser) {
-        await signInAnonymously(auth);
-      }
+      await ensurePilotAuth();
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
