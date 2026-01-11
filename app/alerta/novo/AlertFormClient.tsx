@@ -237,7 +237,7 @@ export default function AlertFormClient() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         signInAnonymously(auth).catch((error) => {
-          console.error("Anonymous login failed:", error);
+          console.error("Falha ao iniciar sessão anônima:", error);
         });
       }
     });
@@ -423,7 +423,7 @@ export default function AlertFormClient() {
     if (!alertType) missing.push("Escolha o tipo de alerta");
     if (!herdCount) missing.push("Informe número de animais afetados");
     if (!state) missing.push("Confirme o estado");
-    if (!regionIBGE) missing.push("Selecione a região (IBGE / epidemiológica)");
+    if (!regionIBGE) missing.push("Selecione a região epidemiológica (ex.: Lages)");
     if (!cityCode) missing.push("Selecione o município");
     if (!severity) missing.push("Classifique a gravidade");
     setErrors(missing);
@@ -1041,18 +1041,18 @@ export default function AlertFormClient() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Select
                     name="regionIBGE"
-                    label="Região (IBGE / epidemiológica)"
+                    label="Região epidemiológica (ex.: Lages)"
                     value={regionIBGE}
                     onChange={(event) => {
                       setRegionIBGE(event.target.value);
                       setCityCode("");
                       setCityName("");
                     }}
-                    helper="Agrupa municípios em polos epidemiológicos."
+                    helper="Selecione a região epidemiológica (ex.: região de Lages)."
                     disabled={!state || isLoadingCities}
                     required
                   >
-                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione"}</option>
+                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione a região"}</option>
                     {regionIBGEOptions.map((option) => (
                       <option key={option} value={option}>
                         {option}
