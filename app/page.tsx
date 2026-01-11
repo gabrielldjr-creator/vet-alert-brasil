@@ -117,6 +117,31 @@ export default function Home() {
           </div>
         </Card>
       </section>
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-slate-900">Adicione como app no celular</h2>
+        <Card className="space-y-4 border-slate-200 p-6">
+          <div className="space-y-2 text-sm text-slate-700">
+            <p className="font-semibold text-slate-900">No iPhone (Safari)</p>
+            <ol className="space-y-1 pl-4">
+              <li>1. Toque no botão de compartilhamento (quadrado com seta para cima).</li>
+              <li>2. Selecione “Adicionar à Tela de Início”.</li>
+              <li>3. Confirme o nome e toque em “Adicionar”.</li>
+            </ol>
+          </div>
+          <div className="space-y-2 text-sm text-slate-700">
+            <p className="font-semibold text-slate-900">No Android (Chrome)</p>
+            <ol className="space-y-1 pl-4">
+              <li>1. Toque no menu ⋮ no canto superior direito.</li>
+              <li>2. Escolha “Adicionar à tela inicial”.</li>
+              <li>3. Confirme para criar o atalho como app.</li>
+            </ol>
+          </div>
+          <p className="text-xs text-slate-500">
+            O atalho abre o Vet Alert Brasil em tela cheia, facilitando o acesso diário.
+          </p>
+        </Card>
+      </section>
     </div>
   );
 }
