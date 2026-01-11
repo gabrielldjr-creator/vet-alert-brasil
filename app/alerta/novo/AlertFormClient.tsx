@@ -443,7 +443,7 @@ export default function AlertFormClient() {
         state,
         regionIBGE: regionIBGE || undefined,
         municipality: cityName || undefined,
-        localidadeAproximada: localidadeAproximada ? localidadeAproximada.trim() : undefined,
+        localidadeAproximada: localidadeAproximada ? localidadeAproximada.trim() : null,
         city: cityName || undefined,
         cityCode: cityCode ? Number(cityCode) : undefined,
         cityName: cityName || undefined,
