@@ -237,13 +237,8 @@ export default function AlertFormClient() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        ensurePilotAuth().catch(async (error) => {
-          console.error("Falha ao iniciar sessão:", error);
-          try {
-            await signInAnonymously(auth);
-          } catch (anonError) {
-            console.error("Falha ao iniciar sessão anônima:", anonError);
-          }
+        signInAnonymously(auth).catch((error) => {
+          console.error("Falha ao iniciar sessão anônima:", error);
         });
       }
     });
