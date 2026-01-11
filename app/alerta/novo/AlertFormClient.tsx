@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
@@ -11,6 +11,7 @@ import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
+import { ensurePilotAuth } from "../../../lib/auth";
 import { auth, db } from "../../../lib/firebase";
 import { fetchMunicipalities, MunicipalityOption, stateOptions } from "../../../lib/regions";
 
@@ -236,8 +237,8 @@ export default function AlertFormClient() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        signInAnonymously(auth).catch((error) => {
-          console.error("Anonymous login failed:", error);
+        ensurePilotAuth().catch((error) => {
+          console.error("Falha ao iniciar sessão:", error);
         });
       }
     });
@@ -423,7 +424,7 @@ export default function AlertFormClient() {
     if (!alertType) missing.push("Escolha o tipo de alerta");
     if (!herdCount) missing.push("Informe número de animais afetados");
     if (!state) missing.push("Confirme o estado");
-    if (!regionIBGE) missing.push("Selecione a região (IBGE / epidemiológica)");
+    if (!regionIBGE) missing.push("Selecione a região epidemiológica (ex.: Lages)");
     if (!cityCode) missing.push("Selecione o município");
     if (!severity) missing.push("Classifique a gravidade");
     setErrors(missing);
@@ -431,9 +432,7 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
-      if (!auth.currentUser) {
-        await signInAnonymously(auth);
-      }
+      await ensurePilotAuth();
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
@@ -1041,18 +1040,18 @@ export default function AlertFormClient() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Select
                     name="regionIBGE"
-                    label="Região (IBGE / epidemiológica)"
+                    label="Região epidemiológica (ex.: Lages)"
                     value={regionIBGE}
                     onChange={(event) => {
                       setRegionIBGE(event.target.value);
                       setCityCode("");
                       setCityName("");
                     }}
-                    helper="Agrupa municípios em polos epidemiológicos."
+                    helper="Selecione a região epidemiológica (ex.: região de Lages)."
                     disabled={!state || isLoadingCities}
                     required
                   >
-                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione"}</option>
+                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione a região"}</option>
                     {regionIBGEOptions.map((option) => (
                       <option key={option} value={option}>
                         {option}

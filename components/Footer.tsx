@@ -13,7 +13,9 @@ export function Footer() {
         <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-700">
           <Link className="hover:text-emerald-700" href="/">Acessar</Link>
           <Link className="hover:text-emerald-700" href="/dashboard">Painel</Link>
-          <Link className="hover:text-emerald-700" href="/privacidade">Privacidade</Link>
+          <Link className="hover:text-emerald-700" href="/privacidade">
+            POLÍTICA DE PRIVACIDADE – VET ALERT BRASIL
+          </Link>
         </div>
       </div>
     </footer>
