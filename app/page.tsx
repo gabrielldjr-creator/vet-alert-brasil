@@ -20,6 +20,23 @@ export default function Home() {
         <p className="text-sm uppercase tracking-wide text-slate-500">
           Camada pré-diagnóstica de vigilância clínica agregada.
         </p>
+        <div className="space-y-4">
+          <h1 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
+            Inteligência epidemiológica regional, construída pelo campo.
+          </h1>
+          <p className="max-w-2xl text-lg text-slate-700">
+            Registre sinais observados no consultório ou na fazenda e acompanhe padrões regionais em tempo real. Alertas 100% anônimos
+            e sem orientação clínica. Gratuito para veterinários.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button href="/alerta/novo" className="w-full sm:w-auto px-6 py-3 text-base">
+            Registrar alerta
+          </Button>
+          <Button href="/dashboard" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
+            Ver painel de alertas
+          </Button>
+        </div>
       </section>
 
       <section className="space-y-4">

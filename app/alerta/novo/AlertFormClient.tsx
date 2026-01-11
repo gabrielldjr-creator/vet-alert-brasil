@@ -11,6 +11,7 @@ import { Input } from "../../../components/Input";
 import { Select } from "../../../components/Select";
 import { Textarea } from "../../../components/Textarea";
 import { ProfileSetupCard } from "../../../components/ProfileSetupCard";
+import { ensurePilotAuth } from "../../../lib/auth";
 import { auth, db } from "../../../lib/firebase";
 import { fetchMunicipalities, MunicipalityOption, stateOptions } from "../../../lib/regions";
 
@@ -236,8 +237,13 @@ export default function AlertFormClient() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        signInAnonymously(auth).catch((error) => {
-          console.error("Anonymous login failed:", error);
+        ensurePilotAuth().catch(async (error) => {
+          console.error("Falha ao iniciar sessão:", error);
+          try {
+            await signInAnonymously(auth);
+          } catch (anonError) {
+            console.error("Falha ao iniciar sessão anônima:", anonError);
+          }
         });
       }
     });
@@ -431,7 +437,10 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
-      if (!auth.currentUser) {
+      try {
+        await ensurePilotAuth();
+      } catch (error) {
+        console.error("Falha ao iniciar sessão:", error);
         await signInAnonymously(auth);
       }
       await addDoc(collection(db, "alerts"), {
