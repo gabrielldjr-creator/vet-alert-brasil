@@ -370,13 +370,13 @@ export default function AlertFormClient() {
     };
   }, [state]);
 
-  const goNext = () => setStep((current) => Math.min(current + 1, 5));
+  const goNext = () => setStep((current) => Math.min(current + 1, 6));
   const goBack = () => setStep((current) => Math.max(current - 1, 0));
 
   const handleSelection = (setter: (value: string) => void) => (value: string) => {
     setter(value);
     setErrors([]);
-    if (step < 5) {
+    if (step < 6) {
       goNext();
     }
   };
@@ -503,9 +503,9 @@ export default function AlertFormClient() {
       <Card className="p-6 shadow-sm">
         <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
-            <span>Passo {step + 1} de 6</span>
+            <span>Passo {step + 1} de 7</span>
             <div className="flex gap-2" aria-hidden>
-              {[0, 1, 2, 3, 4, 5].map((index) => (
+              {[0, 1, 2, 3, 4, 5, 6].map((index) => (
                 <span
                   key={index}
                   className={`h-1 w-10 rounded-full transition ${
@@ -1044,6 +1044,9 @@ export default function AlertFormClient() {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
+                  <p className="text-xs text-slate-600 sm:col-span-2">
+                    O município é a referência geográfica principal. A região epidemiológica é apenas informativa.
+                  </p>
                   <Select
                     name="regionIBGE"
                     label="Região epidemiológica (ex.: Lages)"
@@ -1113,31 +1116,77 @@ export default function AlertFormClient() {
                 />
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm">
-                <p className="font-semibold">Revisão rápida</p>
-                <ul className="mt-2 space-y-1">
-                  <li>• Sinal: {alertType || "—"}</li>
-                  {alertDetails.length > 0 && <li>• Detalhes: {alertDetails.join(", ")}</li>}
-                  <li>• Espécie: {species || "—"}</li>
-                  <li>• Nº animais: {herdCount || "—"}</li>
-                  <li>• Gravidade: {severity || "—"}</li>
-                  {eventOnset && <li>• Início: {eventOnset}</li>}
-                  {recentChanges && <li>• Mudança recente: {recentChanges}</li>}
-                  {feedChange && <li>• Alimentação: {feedChange}</li>}
-                  {feedType.length > 0 && <li>• Tipo de alimento: {feedType.join(", ")}</li>}
-                  {feedOrigin && <li>• Origem: {feedOrigin}</li>}
-                  {drugExposure && <li>• Medicamentos/vacinas: {drugExposure}</li>}
-                  {drugCategory.length > 0 && <li>• Categoria: {drugCategory.join(", ")}</li>}
-                  {drugInterval && <li>• Intervalo: {drugInterval}</li>}
-                  {environmentSignals.length > 0 && <li>• Ambiental: {environmentSignals.join(", ")}</li>}
-                  {regionalPattern && <li>• Casos semelhantes: {regionalPattern}</li>}
-                  <li>
-                    • Região: {country} / {state}
-                  </li>
-                  <li>• Região (IBGE): {regionIBGE || "—"}</li>
-                  <li>• Município: {cityName || "—"}</li>
-                  {localidadeAproximada && <li>• Localidade aproximada: {localidadeAproximada}</li>}
+            </div>
+          )}
+
+          {step === 6 && (
+            <div className="space-y-5">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Revisão antes do envio</p>
+                <p className="text-sm text-slate-600">
+                  Confira cada item e confirme para registrar o alerta.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-sm text-amber-900">
+                <ul className="space-y-1">
+                  <li>• Confira novamente a espécie antes de enviar.</li>
+                  <li>• Alertas são anônimos e não substituem notificações oficiais.</li>
+                  <li>• Erros são esperados no trabalho de campo — revise com calma.</li>
                 </ul>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-800 shadow-sm">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sinal e espécie</p>
+                    <ul className="space-y-1">
+                      <li>• Sinal: {alertType || "—"}</li>
+                      {alertDetails.length > 0 && <li>• Detalhes: {alertDetails.join(", ")}</li>}
+                      <li>• Espécie: {species || "—"}</li>
+                      <li>• Nº animais: {herdCount || "—"}</li>
+                      <li>• Gravidade: {severity || "—"}</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contexto</p>
+                    <ul className="space-y-1">
+                      <li>• Início: {eventOnset || "—"}</li>
+                      <li>• Mudança recente: {recentChanges || "—"}</li>
+                      <li>• Alimentação: {feedChange || "—"}</li>
+                      <li>• Tipo de alimento: {feedType.length > 0 ? feedType.join(", ") : "—"}</li>
+                      <li>• Origem: {feedOrigin || "—"}</li>
+                      <li>• Medicamentos/vacinas: {drugExposure || "—"}</li>
+                      <li>• Categoria: {drugCategory.length > 0 ? drugCategory.join(", ") : "—"}</li>
+                      <li>• Intervalo: {drugInterval || "—"}</li>
+                      <li>
+                        • Ambiental: {environmentSignals.length > 0 ? environmentSignals.join(", ") : "—"}
+                      </li>
+                      <li>• Casos semelhantes: {regionalPattern || "—"}</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 text-sm text-slate-800">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Região</p>
+                    <ul className="space-y-1">
+                      <li>
+                        • País/UF: {country} / {state}
+                      </li>
+                      <li>• Região (IBGE): {regionIBGE || "—"}</li>
+                      <li>• Município: {cityName || "—"}</li>
+                      <li>• Localidade aproximada: {localidadeAproximada || "—"}</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Observação</p>
+                    <p className="rounded-xl bg-white p-3 text-sm text-slate-700 shadow-inner">
+                      {notes.trim() ? notes.trim() : "Sem observações adicionais."}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1159,34 +1208,39 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <Button
-                type="button"
-                variant="secondary"
-                className="px-4 py-2"
-                onClick={goBack}
-                disabled={step === 0}
-              >
-                Voltar
+          {step === 6 ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button type="button" variant="secondary" className="px-4 py-2" onClick={goBack}>
+                Voltar para editar
               </Button>
-              <span>Fluxo concluído em menos de 60s.</span>
-            </div>
-            {step < 5 ? (
-              <Button type="button" className="w-full sm:w-auto px-6 py-3 text-base" onClick={handleNext}>
-                Próximo
-              </Button>
-            ) : (
               <Button
                 type="button"
                 className="w-full sm:w-auto px-6 py-3 text-base"
                 disabled={isSubmitting}
                 onClick={handleSubmit}
               >
-                {isSubmitting ? "Registrando..." : "Registrar alerta"}
+                {isSubmitting ? "Registrando..." : "Confirmar e enviar"}
               </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 text-sm text-slate-600">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="px-4 py-2"
+                  onClick={goBack}
+                  disabled={step === 0}
+                >
+                  Voltar
+                </Button>
+                <span>Fluxo concluído em menos de 60s.</span>
+              </div>
+              <Button type="button" className="w-full sm:w-auto px-6 py-3 text-base" onClick={handleNext}>
+                Próximo
+              </Button>
+            </div>
+          )}
         </form>
       </Card>
     </div>
