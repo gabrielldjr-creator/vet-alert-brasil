@@ -261,6 +261,7 @@ export default function AlertFormClient() {
   const [cityOptions, setCityOptions] = useState<MunicipalityOption[]>([]);
   const [cityCode, setCityCode] = useState("");
   const [cityName, setCityName] = useState("");
+  const [municipalitySearch, setMunicipalitySearch] = useState("");
   const [regionIBGE, setRegionIBGE] = useState("");
   const [localidadeAproximada, setLocalidadeAproximada] = useState("");
   const [cityError, setCityError] = useState("");
@@ -317,20 +318,24 @@ export default function AlertFormClient() {
   }, [cityOptions]);
 
   const filteredMunicipalities = useMemo(() => {
-    if (!regionIBGE) return [];
-    return cityOptions.filter((city) => city.microregion === regionIBGE);
-  }, [cityOptions, regionIBGE]);
+    const trimmed = municipalitySearch.trim().toLowerCase();
+    if (trimmed.length < 3) return [];
+    return cityOptions.filter((city) => city.name.toLowerCase().includes(trimmed)).slice(0, 50);
+  }, [cityOptions, municipalitySearch]);
 
-  const handleMunicipalityChange = (nextCode: string) => {
-    setCityCode(nextCode);
-    if (!nextCode) {
-      setCityName("");
+  const handleMunicipalityInput = (value: string) => {
+    setMunicipalitySearch(value);
+    const match = cityOptions.find((city) => city.name === value);
+    if (match) {
+      setCityCode(match.code.toString());
+      setCityName(match.name);
+      if (match.microregion) {
+        setRegionIBGE(match.microregion);
+      }
       return;
     }
-    const match = cityOptions.find((city) => city.code.toString() === nextCode);
-    if (match) {
-      setCityName(match.name);
-    }
+    setCityCode("");
+    setCityName("");
   };
 
   useEffect(() => {
@@ -339,6 +344,7 @@ export default function AlertFormClient() {
       setCityOptions([]);
       setCityCode("");
       setCityName("");
+      setMunicipalitySearch("");
       setRegionIBGE("");
       setLocalidadeAproximada("");
       setCityError("");
@@ -370,13 +376,13 @@ export default function AlertFormClient() {
     };
   }, [state]);
 
-  const goNext = () => setStep((current) => Math.min(current + 1, 5));
+  const goNext = () => setStep((current) => Math.min(current + 1, 6));
   const goBack = () => setStep((current) => Math.max(current - 1, 0));
 
   const handleSelection = (setter: (value: string) => void) => (value: string) => {
     setter(value);
     setErrors([]);
-    if (step < 5) {
+    if (step < 6) {
       goNext();
     }
   };
@@ -428,7 +434,6 @@ export default function AlertFormClient() {
     if (!alertType) missing.push("Escolha o tipo de alerta");
     if (!herdCount) missing.push("Informe número de animais afetados");
     if (!state) missing.push("Confirme o estado");
-    if (!regionIBGE) missing.push("Selecione a região epidemiológica (ex.: Lages)");
     if (!cityCode) missing.push("Selecione o município");
     if (!severity) missing.push("Classifique a gravidade");
     setErrors(missing);
@@ -503,9 +508,9 @@ export default function AlertFormClient() {
       <Card className="p-6 shadow-sm">
         <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
-            <span>Passo {step + 1} de 6</span>
+            <span>Passo {step + 1} de 7</span>
             <div className="flex gap-2" aria-hidden>
-              {[0, 1, 2, 3, 4, 5].map((index) => (
+              {[0, 1, 2, 3, 4, 5, 6].map((index) => (
                 <span
                   key={index}
                   className={`h-1 w-10 rounded-full transition ${
@@ -1044,39 +1049,40 @@ export default function AlertFormClient() {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
+                  <p className="text-xs text-slate-600 sm:col-span-2">
+                    O município é a referência geográfica principal. A região epidemiológica é apenas informativa.
+                  </p>
+                  <div className="space-y-2">
+                    <Input
+                      name="city"
+                      label="Município"
+                      value={municipalitySearch}
+                      onChange={(event) => handleMunicipalityInput(event.target.value)}
+                      helper={cityError || "Digite 3+ letras para buscar e selecionar."}
+                      placeholder="Comece digitando o município"
+                      disabled={!state || isLoadingCities}
+                      required
+                      list="municipality-options"
+                      autoComplete="off"
+                    />
+                    <datalist id="municipality-options">
+                      {filteredMunicipalities.map((city) => (
+                        <option key={city.code} value={city.name} />
+                      ))}
+                    </datalist>
+                  </div>
                   <Select
                     name="regionIBGE"
-                    label="Região epidemiológica (ex.: Lages)"
+                    label="Região epidemiológica (informativa)"
                     value={regionIBGE}
-                    onChange={(event) => {
-                      setRegionIBGE(event.target.value);
-                      setCityCode("");
-                      setCityName("");
-                    }}
-                    helper="Selecione a região epidemiológica (ex.: região de Lages)."
+                    onChange={(event) => setRegionIBGE(event.target.value)}
+                    helper="Opcional. Preenchida automaticamente quando disponível."
                     disabled={!state || isLoadingCities}
-                    required
                   >
-                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione a região"}</option>
+                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione a região (opcional)"}</option>
                     {regionIBGEOptions.map((option) => (
                       <option key={option} value={option}>
                         {option}
-                      </option>
-                    ))}
-                  </Select>
-                  <Select
-                    name="city"
-                    label="Município"
-                    value={cityCode}
-                    onChange={(event) => handleMunicipalityChange(event.target.value)}
-                    helper={cityError || "Selecione o município para clusters locais."}
-                    disabled={!regionIBGE || isLoadingCities}
-                    required
-                  >
-                    <option value="">{regionIBGE ? "Selecione" : "Selecione a região"}</option>
-                    {filteredMunicipalities.map((city) => (
-                      <option key={city.code} value={city.code}>
-                        {city.name}
                       </option>
                     ))}
                   </Select>
@@ -1100,44 +1106,93 @@ export default function AlertFormClient() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">Observação rápida (opcional)</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Observação rápida (suspeita clínica) — opcional
+                  </p>
                   <span className="text-xs text-slate-500">{notes.length}/250</span>
                 </div>
                 <Textarea
                   name="notes"
-                  placeholder="Resumo curto, máximo 250 caracteres."
+                  placeholder="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
                   value={notes}
                   onChange={(event) => setNotes(event.target.value.slice(0, 250))}
                   rows={4}
                   maxLength={250}
+                  helper="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
                 />
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm">
-                <p className="font-semibold">Revisão rápida</p>
-                <ul className="mt-2 space-y-1">
-                  <li>• Sinal: {alertType || "—"}</li>
-                  {alertDetails.length > 0 && <li>• Detalhes: {alertDetails.join(", ")}</li>}
-                  <li>• Espécie: {species || "—"}</li>
-                  <li>• Nº animais: {herdCount || "—"}</li>
-                  <li>• Gravidade: {severity || "—"}</li>
-                  {eventOnset && <li>• Início: {eventOnset}</li>}
-                  {recentChanges && <li>• Mudança recente: {recentChanges}</li>}
-                  {feedChange && <li>• Alimentação: {feedChange}</li>}
-                  {feedType.length > 0 && <li>• Tipo de alimento: {feedType.join(", ")}</li>}
-                  {feedOrigin && <li>• Origem: {feedOrigin}</li>}
-                  {drugExposure && <li>• Medicamentos/vacinas: {drugExposure}</li>}
-                  {drugCategory.length > 0 && <li>• Categoria: {drugCategory.join(", ")}</li>}
-                  {drugInterval && <li>• Intervalo: {drugInterval}</li>}
-                  {environmentSignals.length > 0 && <li>• Ambiental: {environmentSignals.join(", ")}</li>}
-                  {regionalPattern && <li>• Casos semelhantes: {regionalPattern}</li>}
-                  <li>
-                    • Região: {country} / {state}
-                  </li>
-                  <li>• Região (IBGE): {regionIBGE || "—"}</li>
-                  <li>• Município: {cityName || "—"}</li>
-                  {localidadeAproximada && <li>• Localidade aproximada: {localidadeAproximada}</li>}
+            </div>
+          )}
+
+          {step === 6 && (
+            <div className="space-y-5">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Revisão antes do envio</p>
+                <p className="text-sm text-slate-600">
+                  Confira cada item e confirme para registrar o alerta.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-sm text-amber-900">
+                <ul className="space-y-1">
+                  <li>• Confira novamente a espécie antes de enviar.</li>
+                  <li>• Alertas são anônimos e não substituem notificações oficiais.</li>
+                  <li>• Erros são esperados no trabalho de campo — revise com calma.</li>
                 </ul>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-800 shadow-sm">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sinal e espécie</p>
+                    <ul className="space-y-1">
+                      <li>• Sinal: {alertType || "—"}</li>
+                      {alertDetails.length > 0 && <li>• Detalhes: {alertDetails.join(", ")}</li>}
+                      <li>• Espécie: {species || "—"}</li>
+                      <li>• Nº animais: {herdCount || "—"}</li>
+                      <li>• Gravidade: {severity || "—"}</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contexto</p>
+                    <ul className="space-y-1">
+                      <li>• Início: {eventOnset || "—"}</li>
+                      <li>• Mudança recente: {recentChanges || "—"}</li>
+                      <li>• Alimentação: {feedChange || "—"}</li>
+                      <li>• Tipo de alimento: {feedType.length > 0 ? feedType.join(", ") : "—"}</li>
+                      <li>• Origem: {feedOrigin || "—"}</li>
+                      <li>• Medicamentos/vacinas: {drugExposure || "—"}</li>
+                      <li>• Categoria: {drugCategory.length > 0 ? drugCategory.join(", ") : "—"}</li>
+                      <li>• Intervalo: {drugInterval || "—"}</li>
+                      <li>
+                        • Ambiental: {environmentSignals.length > 0 ? environmentSignals.join(", ") : "—"}
+                      </li>
+                      <li>• Casos semelhantes: {regionalPattern || "—"}</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 text-sm text-slate-800">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Região</p>
+                    <ul className="space-y-1">
+                      <li>
+                        • País/UF: {country} / {state}
+                      </li>
+                      <li>• Região (IBGE): {regionIBGE || "—"}</li>
+                      <li>• Município: {cityName || "—"}</li>
+                      <li>• Localidade aproximada: {localidadeAproximada || "—"}</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Observação</p>
+                    <p className="rounded-xl bg-white p-3 text-sm text-slate-700 shadow-inner">
+                      {notes.trim() ? notes.trim() : "Sem observações adicionais."}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1159,34 +1214,39 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <Button
-                type="button"
-                variant="secondary"
-                className="px-4 py-2"
-                onClick={goBack}
-                disabled={step === 0}
-              >
-                Voltar
+          {step === 6 ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button type="button" variant="secondary" className="px-4 py-2" onClick={goBack}>
+                Voltar para editar
               </Button>
-              <span>Fluxo concluído em menos de 60s.</span>
-            </div>
-            {step < 5 ? (
-              <Button type="button" className="w-full sm:w-auto px-6 py-3 text-base" onClick={handleNext}>
-                Próximo
-              </Button>
-            ) : (
               <Button
                 type="button"
                 className="w-full sm:w-auto px-6 py-3 text-base"
                 disabled={isSubmitting}
                 onClick={handleSubmit}
               >
-                {isSubmitting ? "Registrando..." : "Registrar alerta"}
+                {isSubmitting ? "Registrando..." : "Confirmar e enviar"}
               </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 text-sm text-slate-600">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="px-4 py-2"
+                  onClick={goBack}
+                  disabled={step === 0}
+                >
+                  Voltar
+                </Button>
+                <span>Fluxo concluído em menos de 60s.</span>
+              </div>
+              <Button type="button" className="w-full sm:w-auto px-6 py-3 text-base" onClick={handleNext}>
+                Próximo
+              </Button>
+            </div>
+          )}
         </form>
       </Card>
     </div>
