@@ -261,6 +261,7 @@ export default function AlertFormClient() {
   const [cityOptions, setCityOptions] = useState<MunicipalityOption[]>([]);
   const [cityCode, setCityCode] = useState("");
   const [cityName, setCityName] = useState("");
+  const [municipalitySearch, setMunicipalitySearch] = useState("");
   const [regionIBGE, setRegionIBGE] = useState("");
   const [localidadeAproximada, setLocalidadeAproximada] = useState("");
   const [cityError, setCityError] = useState("");
@@ -317,20 +318,24 @@ export default function AlertFormClient() {
   }, [cityOptions]);
 
   const filteredMunicipalities = useMemo(() => {
-    if (!regionIBGE) return [];
-    return cityOptions.filter((city) => city.microregion === regionIBGE);
-  }, [cityOptions, regionIBGE]);
+    const trimmed = municipalitySearch.trim().toLowerCase();
+    if (trimmed.length < 3) return [];
+    return cityOptions.filter((city) => city.name.toLowerCase().includes(trimmed)).slice(0, 50);
+  }, [cityOptions, municipalitySearch]);
 
-  const handleMunicipalityChange = (nextCode: string) => {
-    setCityCode(nextCode);
-    if (!nextCode) {
-      setCityName("");
+  const handleMunicipalityInput = (value: string) => {
+    setMunicipalitySearch(value);
+    const match = cityOptions.find((city) => city.name === value);
+    if (match) {
+      setCityCode(match.code.toString());
+      setCityName(match.name);
+      if (match.microregion) {
+        setRegionIBGE(match.microregion);
+      }
       return;
     }
-    const match = cityOptions.find((city) => city.code.toString() === nextCode);
-    if (match) {
-      setCityName(match.name);
-    }
+    setCityCode("");
+    setCityName("");
   };
 
   useEffect(() => {
@@ -339,6 +344,7 @@ export default function AlertFormClient() {
       setCityOptions([]);
       setCityCode("");
       setCityName("");
+      setMunicipalitySearch("");
       setRegionIBGE("");
       setLocalidadeAproximada("");
       setCityError("");
@@ -428,7 +434,6 @@ export default function AlertFormClient() {
     if (!alertType) missing.push("Escolha o tipo de alerta");
     if (!herdCount) missing.push("Informe número de animais afetados");
     if (!state) missing.push("Confirme o estado");
-    if (!regionIBGE) missing.push("Selecione a região epidemiológica (ex.: Lages)");
     if (!cityCode) missing.push("Selecione o município");
     if (!severity) missing.push("Classifique a gravidade");
     setErrors(missing);
@@ -1047,39 +1052,37 @@ export default function AlertFormClient() {
                   <p className="text-xs text-slate-600 sm:col-span-2">
                     O município é a referência geográfica principal. A região epidemiológica é apenas informativa.
                   </p>
+                  <div className="space-y-2">
+                    <Input
+                      name="city"
+                      label="Município"
+                      value={municipalitySearch}
+                      onChange={(event) => handleMunicipalityInput(event.target.value)}
+                      helper={cityError || "Digite 3+ letras para buscar e selecionar."}
+                      placeholder="Comece digitando o município"
+                      disabled={!state || isLoadingCities}
+                      required
+                      list="municipality-options"
+                      autoComplete="off"
+                    />
+                    <datalist id="municipality-options">
+                      {filteredMunicipalities.map((city) => (
+                        <option key={city.code} value={city.name} />
+                      ))}
+                    </datalist>
+                  </div>
                   <Select
                     name="regionIBGE"
-                    label="Região epidemiológica (ex.: Lages)"
+                    label="Região epidemiológica (informativa)"
                     value={regionIBGE}
-                    onChange={(event) => {
-                      setRegionIBGE(event.target.value);
-                      setCityCode("");
-                      setCityName("");
-                    }}
-                    helper="Selecione a região epidemiológica (ex.: região de Lages)."
+                    onChange={(event) => setRegionIBGE(event.target.value)}
+                    helper="Opcional. Preenchida automaticamente quando disponível."
                     disabled={!state || isLoadingCities}
-                    required
                   >
-                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione a região"}</option>
+                    <option value="">{isLoadingCities ? "Carregando..." : "Selecione a região (opcional)"}</option>
                     {regionIBGEOptions.map((option) => (
                       <option key={option} value={option}>
                         {option}
-                      </option>
-                    ))}
-                  </Select>
-                  <Select
-                    name="city"
-                    label="Município"
-                    value={cityCode}
-                    onChange={(event) => handleMunicipalityChange(event.target.value)}
-                    helper={cityError || "Selecione o município para clusters locais."}
-                    disabled={!regionIBGE || isLoadingCities}
-                    required
-                  >
-                    <option value="">{regionIBGE ? "Selecione" : "Selecione a região"}</option>
-                    {filteredMunicipalities.map((city) => (
-                      <option key={city.code} value={city.code}>
-                        {city.name}
                       </option>
                     ))}
                   </Select>
