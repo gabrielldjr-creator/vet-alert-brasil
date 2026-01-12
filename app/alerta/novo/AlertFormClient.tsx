@@ -311,8 +311,7 @@ export default function AlertFormClient() {
     environmentalAlerts.has(alertType) || alertGroup === "Ambientais / Toxicológicos";
   const SpeechRecognition = useMemo(() => {
     if (typeof window === "undefined") return null;
-    const browserWindow = window as typeof window & { webkitSpeechRecognition?: any };
-    return browserWindow.SpeechRecognition || browserWindow.webkitSpeechRecognition || null;
+    return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
   }, []);
 
   const regionIBGEOptions = useMemo(() => {
