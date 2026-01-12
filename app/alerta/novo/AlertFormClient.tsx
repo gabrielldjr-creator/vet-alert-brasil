@@ -1044,6 +1044,9 @@ export default function AlertFormClient() {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
+                  <p className="text-xs text-slate-600 sm:col-span-2">
+                    O município é a referência geográfica principal. A região epidemiológica é apenas informativa.
+                  </p>
                   <Select
                     name="regionIBGE"
                     label="Região epidemiológica (ex.: Lages)"
@@ -1123,6 +1126,13 @@ export default function AlertFormClient() {
                 <p className="text-sm text-slate-600">
                   Confira cada item e confirme para registrar o alerta.
                 </p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-sm text-amber-900">
+                <ul className="space-y-1">
+                  <li>• Confira novamente a espécie antes de enviar.</li>
+                  <li>• Alertas são anônimos e não substituem notificações oficiais.</li>
+                  <li>• Erros são esperados no trabalho de campo — revise com calma.</li>
+                </ul>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-800 shadow-sm">
