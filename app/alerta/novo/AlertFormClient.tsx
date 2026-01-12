@@ -509,8 +509,8 @@ export default function AlertFormClient() {
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
       recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result) => result[0]?.transcript ?? "")
+        const transcript = Array.from(event.results as any[])
+          .map((result: any) => result[0]?.transcript ?? "")
           .join(" ")
           .trim();
         if (!transcript) return;
