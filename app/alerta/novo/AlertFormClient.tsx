@@ -309,6 +309,11 @@ export default function AlertFormClient() {
   const showsPharmaModule = pharmaSensitiveAlerts.has(alertType);
   const showsEnvironmentalModule =
     environmentalAlerts.has(alertType) || alertGroup === "Ambientais / Toxicológicos";
+  const SpeechRecognition = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const browserWindow = window as typeof window & { webkitSpeechRecognition?: any };
+    return browserWindow.SpeechRecognition || browserWindow.webkitSpeechRecognition || null;
+  }, []);
 
   const regionIBGEOptions = useMemo(() => {
     const groups = new Set(
@@ -496,6 +501,31 @@ export default function AlertFormClient() {
       setSubmitError("Erro ao salvar alerta. Tente novamente.");
     }
   };
+
+  const handleSpeechToText = useCallback(() => {
+    if (!SpeechRecognition) return;
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "pt-BR";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0]?.transcript ?? "")
+          .join(" ")
+          .trim();
+        if (!transcript) return;
+        setNotes((current) => {
+          const separator = current.trim() ? " " : "";
+          return `${current}${separator}${transcript}`.slice(0, 250);
+        });
+      };
+      recognition.onerror = () => {};
+      recognition.start();
+    } catch {
+      // fail silently
+    }
+  }, [SpeechRecognition]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
@@ -1111,15 +1141,26 @@ export default function AlertFormClient() {
                   </p>
                   <span className="text-xs text-slate-500">{notes.length}/250</span>
                 </div>
-                <Textarea
-                  name="notes"
-                  placeholder="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value.slice(0, 250))}
-                  rows={4}
-                  maxLength={250}
-                  helper="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
-                />
+                <div className="flex items-start gap-3">
+                  <Textarea
+                    name="notes"
+                    placeholder="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value.slice(0, 250))}
+                    rows={4}
+                    maxLength={250}
+                    helper="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
+                    containerClassName="flex-1"
+                  />
+                  <button
+                    type="button"
+                    className="mt-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-emerald-200 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleSpeechToText}
+                    disabled={!SpeechRecognition}
+                  >
+                    🎤 Ditado
+                  </button>
+                </div>
               </div>
 
             </div>
