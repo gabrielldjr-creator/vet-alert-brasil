@@ -1103,16 +1103,19 @@ export default function AlertFormClient() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">Observação rápida (opcional)</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Observação rápida (suspeita clínica) — opcional
+                  </p>
                   <span className="text-xs text-slate-500">{notes.length}/250</span>
                 </div>
                 <Textarea
                   name="notes"
-                  placeholder="Resumo curto, máximo 250 caracteres."
+                  placeholder="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
                   value={notes}
                   onChange={(event) => setNotes(event.target.value.slice(0, 250))}
                   rows={4}
                   maxLength={250}
+                  helper="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
                 />
               </div>
 
