@@ -784,6 +784,8 @@ export default function AlertFormClient() {
                         "Proximidade de atividade agrícola",
                         "Mudança de fonte de água",
                         "Evento climático extremo recente",
+                        // Contexto ambiental apenas; não implica causalidade, diagnóstico ou notificação.
+                        "Plantas tóxicas naturalmente presentes no ambiente / pastagem",
                       ].map((signal) => {
                         const selected = environmentSignals.includes(signal);
                         return (
