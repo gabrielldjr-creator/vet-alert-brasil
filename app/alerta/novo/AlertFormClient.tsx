@@ -82,6 +82,22 @@ const alertCategories = [
 
 const herdCounts = ["1", "2 a 5", "6 a 20", "Mais de 20 (surto)"];
 const severityLevels = ["Atenção", "Preocupante", "Urgente"];
+const arrivalWhenCalledOptions = [
+  { value: "early", label: "Chamado cedo" },
+  { value: "late", label: "Chamado tarde" },
+  { value: "very_late", label: "Chamado muito tarde" },
+];
+const arrivalSituationOptions = [
+  { value: "expected", label: "Encontrado dentro do esperado" },
+  { value: "abnormal", label: "Encontrado fora do esperado" },
+  { value: "critical", label: "Encontrado crítico" },
+];
+const arrivalExternalFactorOptions = [
+  { value: "delayed_call", label: "Contato tardio" },
+  { value: "financial_limitation", label: "Limitação financeira" },
+  { value: "previous_management", label: "Manejo anterior inadequado" },
+  { value: "recommendation_not_followed", label: "Recomendação não seguida" },
+];
 
 const feedSensitiveAlerts = new Set([
   "Síndrome digestiva",
@@ -279,6 +295,10 @@ export default function AlertFormClient() {
   const [drugInterval, setDrugInterval] = useState("");
   const [environmentSignals, setEnvironmentSignals] = useState<string[]>([]);
   const [regionalPattern, setRegionalPattern] = useState("");
+  const [arrivalWhenCalled, setArrivalWhenCalled] = useState("");
+  const [arrivalSituationFound, setArrivalSituationFound] = useState("");
+  const [arrivalExternalFactors, setArrivalExternalFactors] = useState<string[]>([]);
+  const [arrivalOptionalNote, setArrivalOptionalNote] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -447,7 +467,32 @@ export default function AlertFormClient() {
     try {
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
-      await addDoc(collection(db, "alerts"), {
+      let arrivalContext: {
+        when_called?: string;
+        situation_found?: string;
+        external_factors?: string[];
+        optional_note?: string;
+      } | null = null;
+      try {
+        const optionalNote = arrivalOptionalNote.trim().slice(0, 120);
+        const hasArrivalContext =
+          Boolean(arrivalWhenCalled) ||
+          Boolean(arrivalSituationFound) ||
+          arrivalExternalFactors.length > 0 ||
+          Boolean(optionalNote);
+        if (hasArrivalContext) {
+          arrivalContext = {
+            when_called: arrivalWhenCalled || undefined,
+            situation_found: arrivalSituationFound || undefined,
+            external_factors: arrivalExternalFactors.length > 0 ? arrivalExternalFactors : undefined,
+            optional_note: optionalNote || undefined,
+          };
+        }
+      } catch (error) {
+        console.warn("Falha ao preparar contexto de chegada:", error);
+      }
+
+      const payload = {
         createdAt: serverTimestamp(),
         state,
         regionIBGE: regionIBGE || undefined,
@@ -492,7 +537,14 @@ export default function AlertFormClient() {
           country,
         },
         source: "pilot",
-      });
+      };
+
+      // Mantém o fluxo de criação original com um único addDoc; metadados opcionais seguem anexados.
+      if (arrivalContext) {
+        payload.arrival_context = arrivalContext;
+      }
+
+      await addDoc(collection(db, "alerts"), payload);
 
       router.push("/dashboard");
     } catch (error) {
@@ -536,6 +588,85 @@ export default function AlertFormClient() {
 
       <Card className="p-6 shadow-sm">
         <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
+          <details className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+              Registrar contexto da chegada (opcional)
+            </summary>
+            <div className="mt-4 space-y-4">
+              <Select
+                name="arrivalWhenCalled"
+                label="Quando foi chamado?"
+                value={arrivalWhenCalled}
+                onChange={(event) => setArrivalWhenCalled(event.target.value)}
+                helper="Opcional."
+              >
+                <option value="">Selecione (opcional)</option>
+                {arrivalWhenCalledOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+
+              <Select
+                name="arrivalSituationFound"
+                label="Situação encontrada"
+                value={arrivalSituationFound}
+                onChange={(event) => setArrivalSituationFound(event.target.value)}
+                helper="Opcional."
+              >
+                <option value="">Selecione (opcional)</option>
+                {arrivalSituationOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-slate-900">Fatores externos</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {arrivalExternalFactorOptions.map((option) => {
+                    const selected = arrivalExternalFactors.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={[
+                          buttonBaseStyles,
+                          selected ? buttonSelected : buttonUnselected,
+                          "p-3 text-left text-sm",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() =>
+                          setArrivalExternalFactors((current) =>
+                            current.includes(option.value)
+                              ? current.filter((item) => item !== option.value)
+                              : [...current, option.value]
+                          )
+                        }
+                        aria-pressed={selected}
+                      >
+                        <span className="block font-semibold">{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-slate-600">Opcional.</p>
+              </div>
+
+              <Input
+                name="arrivalOptionalNote"
+                label="Nota opcional (até 120 caracteres)"
+                value={arrivalOptionalNote}
+                onChange={(event) => setArrivalOptionalNote(event.target.value.slice(0, 120))}
+                maxLength={120}
+                helper="Opcional."
+              />
+            </div>
+          </details>
+
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
             <span>Passo {step + 1} de 7</span>
             <div className="flex gap-2" aria-hidden>
