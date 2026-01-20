@@ -279,6 +279,10 @@ export default function AlertFormClient() {
   const [drugInterval, setDrugInterval] = useState("");
   const [environmentSignals, setEnvironmentSignals] = useState<string[]>([]);
   const [regionalPattern, setRegionalPattern] = useState("");
+  const [arrivalWhenCalled, setArrivalWhenCalled] = useState("");
+  const [arrivalSituationFound, setArrivalSituationFound] = useState("");
+  const [arrivalExternalFactors, setArrivalExternalFactors] = useState<string[]>([]);
+  const [arrivalOptionalNote, setArrivalOptionalNote] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -445,6 +449,11 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
+      const arrivalContextHasData =
+        Boolean(arrivalWhenCalled) ||
+        Boolean(arrivalSituationFound) ||
+        arrivalExternalFactors.length > 0 ||
+        Boolean(arrivalOptionalNote.trim());
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
       await addDoc(collection(db, "alerts"), {
@@ -463,6 +472,15 @@ export default function AlertFormClient() {
         severity,
         cases: casesCount,
         herdCount,
+        // Mantém o fluxo e a gravação no Firestore iguais; apenas adiciona dados opcionais quando preenchidos.
+        arrival_context: arrivalContextHasData
+          ? {
+              when_called: arrivalWhenCalled || undefined,
+              situation_found: arrivalSituationFound || undefined,
+              external_factors: arrivalExternalFactors.length > 0 ? arrivalExternalFactors : undefined,
+              optional_note: arrivalOptionalNote.trim() ? arrivalOptionalNote.trim().slice(0, 120) : undefined,
+            }
+          : undefined,
         context: {
           alertDetails,
           notes: notes.trim() ? notes.trim() : "",
@@ -552,6 +570,120 @@ export default function AlertFormClient() {
 
           {step === 0 && (
             <div className="space-y-4">
+              {/* Seção opcional; não altera passos nem a lógica de envio do alerta. */}
+              <details className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4 shadow-sm">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                  Registrar contexto da chegada (opcional)
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-slate-900">Quando foi chamado?</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {[
+                        { value: "early", label: "Mais cedo que o ideal" },
+                        { value: "late", label: "Tarde" },
+                        { value: "very_late", label: "Muito tarde" },
+                      ].map((option) => {
+                        const selected = arrivalWhenCalled === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-3 text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() => setArrivalWhenCalled(option.value)}
+                            aria-pressed={selected}
+                          >
+                            <span className="font-semibold">{option.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-slate-900">Situação encontrada</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {[
+                        { value: "expected", label: "Dentro do esperado" },
+                        { value: "abnormal", label: "Anormal" },
+                        { value: "critical", label: "Crítica" },
+                      ].map((option) => {
+                        const selected = arrivalSituationFound === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-3 text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() => setArrivalSituationFound(option.value)}
+                            aria-pressed={selected}
+                          >
+                            <span className="font-semibold">{option.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-slate-900">Fatores externos associados</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {[
+                        { value: "delayed_call", label: "Chamada tardia" },
+                        { value: "financial_limitation", label: "Limitação financeira" },
+                        { value: "previous_management", label: "Manejo prévio" },
+                        { value: "recommendation_not_followed", label: "Recomendação não seguida" },
+                      ].map((option) => {
+                        const selected = arrivalExternalFactors.includes(option.value);
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={[
+                              buttonBaseStyles,
+                              selected ? buttonSelected : buttonUnselected,
+                              "p-3 text-sm sm:text-base",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() =>
+                              setArrivalExternalFactors((current) =>
+                                current.includes(option.value)
+                                  ? current.filter((item) => item !== option.value)
+                                  : [...current, option.value]
+                              )
+                            }
+                            aria-pressed={selected}
+                          >
+                            <span className="font-semibold">{option.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <Input
+                    name="arrivalOptionalNote"
+                    label="Observação curta (opcional)"
+                    value={arrivalOptionalNote}
+                    onChange={(event) => setArrivalOptionalNote(event.target.value.slice(0, 120))}
+                    maxLength={120}
+                    helper="Máx. 120 caracteres."
+                  />
+                </div>
+              </details>
+
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Tipo de sinal observado</p>
                 <p className="text-sm text-slate-600">Selecione a categoria, depois o sinal específico.</p>
