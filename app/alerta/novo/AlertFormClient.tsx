@@ -449,11 +449,23 @@ export default function AlertFormClient() {
     if (missing.length > 0) return;
 
     try {
-      const arrivalContextHasData =
-        Boolean(arrivalWhenCalled) ||
-        Boolean(arrivalSituationFound) ||
-        arrivalExternalFactors.length > 0 ||
-        Boolean(arrivalOptionalNote.trim());
+      // Firestore não aceita valores undefined: sanitizamos o arrival_context antes do envio.
+      const arrivalContextEntries: Record<string, string | string[]> = {};
+      if (arrivalWhenCalled) {
+        arrivalContextEntries.when_called = arrivalWhenCalled;
+      }
+      if (arrivalSituationFound) {
+        arrivalContextEntries.situation_found = arrivalSituationFound;
+      }
+      if (arrivalExternalFactors.length > 0) {
+        arrivalContextEntries.external_factors = arrivalExternalFactors;
+      }
+      const arrivalNote = arrivalOptionalNote.trim();
+      if (arrivalNote) {
+        arrivalContextEntries.optional_note = arrivalNote.slice(0, 120);
+      }
+      const arrivalContext =
+        Object.keys(arrivalContextEntries).length > 0 ? arrivalContextEntries : undefined;
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
       await addDoc(collection(db, "alerts"), {
@@ -473,14 +485,7 @@ export default function AlertFormClient() {
         cases: casesCount,
         herdCount,
         // Mantém o fluxo e a gravação no Firestore iguais; apenas adiciona dados opcionais quando preenchidos.
-        arrival_context: arrivalContextHasData
-          ? {
-              when_called: arrivalWhenCalled || undefined,
-              situation_found: arrivalSituationFound || undefined,
-              external_factors: arrivalExternalFactors.length > 0 ? arrivalExternalFactors : undefined,
-              optional_note: arrivalOptionalNote.trim() ? arrivalOptionalNote.trim().slice(0, 120) : undefined,
-            }
-          : undefined,
+        arrival_context: arrivalContext,
         context: {
           alertDetails,
           notes: notes.trim() ? notes.trim() : "",
