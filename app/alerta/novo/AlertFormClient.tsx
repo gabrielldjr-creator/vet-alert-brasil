@@ -296,14 +296,14 @@ export default function AlertFormClient() {
       if (!response.ok) throw new Error("Falha na detecção");
       const data = await response.json();
       setCountry(data.country_name || "Brasil");
-      setState(data.region_code || data.region || state);
+      setState(data.region_code || data.region || "SC");
       setLocationMessage("Região detectada automaticamente");
     } catch {
       setLocationMessage("Não foi possível detectar. Ajuste manualmente.");
     } finally {
       setIsDetecting(false);
     }
-  }, [state]);
+  }, []);
 
   useEffect(() => {
     detectRegion();
