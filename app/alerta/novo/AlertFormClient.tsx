@@ -296,14 +296,14 @@ export default function AlertFormClient() {
       if (!response.ok) throw new Error("Falha na detecção");
       const data = await response.json();
       setCountry(data.country_name || "Brasil");
-      setState(data.region_code || data.region || state);
+      setState(data.region_code || data.region || "SC");
       setLocationMessage("Região detectada automaticamente");
     } catch {
       setLocationMessage("Não foi possível detectar. Ajuste manualmente.");
     } finally {
       setIsDetecting(false);
     }
-  }, [state]);
+  }, []);
 
   useEffect(() => {
     detectRegion();
@@ -465,7 +465,7 @@ export default function AlertFormClient() {
         arrivalContextEntries.optional_note = arrivalNote.slice(0, 120);
       }
       const arrivalContext =
-        Object.keys(arrivalContextEntries).length > 0 ? arrivalContextEntries : undefined;
+        Object.keys(arrivalContextEntries).length > 0 ? arrivalContextEntries : null;
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
       await addDoc(collection(db, "alerts"), {
