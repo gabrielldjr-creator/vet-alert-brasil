@@ -465,7 +465,7 @@ export default function AlertFormClient() {
         arrivalContextEntries.optional_note = arrivalNote.slice(0, 120);
       }
       const arrivalContext =
-        Object.keys(arrivalContextEntries).length > 0 ? arrivalContextEntries : undefined;
+        Object.keys(arrivalContextEntries).length > 0 ? arrivalContextEntries : null;
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
       await addDoc(collection(db, "alerts"), {
