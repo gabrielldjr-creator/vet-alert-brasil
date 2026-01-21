@@ -9,7 +9,6 @@ type FilterOption = {
 export type VetPanelFiltersProps = {
   filters: VetPanelFiltersState;
   onChange: (next: VetPanelFiltersState) => void;
-  stateLabel: string;
   speciesOptions: string[];
   alertGroupOptions: string[];
   municipalityOptions: string[];
@@ -18,10 +17,10 @@ export type VetPanelFiltersProps = {
   timeWindowOptions: FilterOption[];
 };
 
-const scopeOptions = (stateLabel: string): FilterOption[] => [
-  { value: "state", label: `Meu estado (${stateLabel})` },
-  { value: "neighbors", label: "Vizinhos" },
+const scopeOptions: FilterOption[] = [
   { value: "all", label: "Brasil" },
+  { value: "SC", label: "Santa Catarina (SC)" },
+  { value: "MT", label: "Mato Grosso (MT)" },
 ];
 
 const Chip = ({
@@ -48,7 +47,6 @@ const Chip = ({
 export function VetPanelFilters({
   filters,
   onChange,
-  stateLabel,
   speciesOptions,
   alertGroupOptions,
   municipalityOptions,
@@ -70,7 +68,7 @@ export function VetPanelFilters({
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Escopo regional</p>
         <div className="flex flex-wrap gap-2">
-          {scopeOptions(stateLabel).map((option) => (
+          {scopeOptions.map((option) => (
             <Chip
               key={option.value}
               label={option.label}
