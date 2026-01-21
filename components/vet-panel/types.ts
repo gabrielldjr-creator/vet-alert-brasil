@@ -41,7 +41,7 @@ export type AlertRecord = {
 };
 
 export type VetPanelFiltersState = {
-  stateScope: "state" | "neighbors" | "all";
+  stateScope: "all" | "SC" | "MT";
   species: string;
   alertGroup: string;
   severity: string;
