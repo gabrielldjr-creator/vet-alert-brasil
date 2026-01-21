@@ -85,7 +85,7 @@ export function DashboardVetPanel() {
     severity: "",
     regionIBGE: "all",
     municipality: "all",
-    timeWindow: "7d",
+    timeWindow: "30d",
   });
   const searchParams = useSearchParams();
   const registrationFlag = searchParams.get("registrado") === "1";
