@@ -576,8 +576,8 @@ export default function AlertFormClient() {
           {step === 0 && (
             <div className="space-y-4">
               {/* Seção opcional; não altera passos nem a lógica de envio do alerta. */}
-              <details className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4 shadow-sm">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+              <details className="rounded-2xl border border-amber-400 bg-amber-50 p-4 shadow-sm">
+                <summary className="cursor-pointer text-sm font-semibold text-amber-700">
                   Registrar contexto da chegada (opcional)
                 </summary>
                 <div className="mt-4 space-y-4">
