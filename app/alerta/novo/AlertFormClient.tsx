@@ -384,13 +384,13 @@ export default function AlertFormClient() {
     };
   }, [state]);
 
-  const goNext = () => setStep((current) => Math.min(current + 1, 6));
+  const goNext = () => setStep((current) => Math.min(current + 1, 7));
   const goBack = () => setStep((current) => Math.max(current - 1, 0));
 
   const handleSelection = (setter: (value: string) => void) => (value: string) => {
     setter(value);
     setErrors([]);
-    if (step < 6) {
+    if (step < 7) {
       goNext();
     }
   };
@@ -418,10 +418,10 @@ export default function AlertFormClient() {
 
   const validateCurrentStep = () => {
     const missing: string[] = [];
-    if (step === 0 && !alertType) missing.push("Escolha o tipo de alerta");
-    if (step === 1 && !species) missing.push("Selecione a espécie");
-    if (step === 2 && !herdCount) missing.push("Informe número de animais afetados");
-    if (step === 3 && !severity) missing.push("Classifique a gravidade");
+    if (step === 1 && !alertType) missing.push("Escolha o tipo de alerta");
+    if (step === 2 && !species) missing.push("Selecione a espécie");
+    if (step === 3 && !herdCount) missing.push("Informe número de animais afetados");
+    if (step === 4 && !severity) missing.push("Classifique a gravidade");
     return missing;
   };
 
@@ -468,7 +468,8 @@ export default function AlertFormClient() {
         Object.keys(arrivalContextEntries).length > 0 ? arrivalContextEntries : null;
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
-      await addDoc(collection(db, "alerts"), {
+      // Alert creation flow must stay identical; we only append arrival_context when provided.
+      const alertPayload = {
         createdAt: serverTimestamp(),
         state,
         regionIBGE: regionIBGE || undefined,
@@ -515,7 +516,25 @@ export default function AlertFormClient() {
           country,
         },
         source: "pilot",
-      });
+      };
+
+      const arrivalContext = {
+        when_called: arrivalWhenCalled || undefined,
+        situation_found: arrivalSituationFound || undefined,
+        external_factors: arrivalExternalFactors.length ? arrivalExternalFactors : undefined,
+        optional_note: arrivalOptionalNote.trim() ? arrivalOptionalNote.trim().slice(0, 120) : undefined,
+      };
+
+      if (
+        arrivalContext.when_called ||
+        arrivalContext.situation_found ||
+        (arrivalContext.external_factors && arrivalContext.external_factors.length > 0) ||
+        arrivalContext.optional_note
+      ) {
+        alertPayload.arrival_context = arrivalContext;
+      }
+
+      await addDoc(collection(db, "alerts"), alertPayload);
 
       router.push("/dashboard");
     } catch (error) {
@@ -560,9 +579,9 @@ export default function AlertFormClient() {
       <Card className="p-6 shadow-sm">
         <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
-            <span>Passo {step + 1} de 7</span>
+            <span>Passo {step + 1} de 8</span>
             <div className="flex gap-2" aria-hidden>
-              {[0, 1, 2, 3, 4, 5, 6].map((index) => (
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
                 <span
                   key={index}
                   className={`h-1 w-10 rounded-full transition ${
@@ -574,6 +593,124 @@ export default function AlertFormClient() {
           </div>
 
           {step === 0 && (
+            <div className="space-y-5">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-slate-900">Registro rápido (anônimo)</p>
+                <p className="text-sm text-slate-600">Contexto de chegada (opcional).</p>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-900">Quando foi chamado?</p>
+                  <div className="grid gap-2">
+                    {["Chegou cedo", "Chegou tarde", "Chegou muito tarde"].map((option, index) => {
+                      const value = index === 0 ? "early" : index === 1 ? "late" : "very_late";
+                      const selected = arrivalWhenCalled === value;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          className={[
+                            buttonBaseStyles,
+                            selected ? buttonSelected : buttonUnselected,
+                            "p-3 text-sm sm:text-base",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => setArrivalWhenCalled(value)}
+                          aria-pressed={selected}
+                        >
+                          <span className="font-semibold">{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-900">Situação encontrada</p>
+                  <div className="grid gap-2">
+                    {["Esperada", "Anormal", "Crítica"].map((option, index) => {
+                      const value = index === 0 ? "expected" : index === 1 ? "abnormal" : "critical";
+                      const selected = arrivalSituationFound === value;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          className={[
+                            buttonBaseStyles,
+                            selected ? buttonSelected : buttonUnselected,
+                            "p-3 text-sm sm:text-base",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => setArrivalSituationFound(value)}
+                          aria-pressed={selected}
+                        >
+                          <span className="font-semibold">{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-900">Fatores externos</p>
+                  <div className="grid gap-2">
+                    {[
+                      { label: "Chamado tardio", value: "delayed_call" },
+                      { label: "Limitação financeira", value: "financial_limitation" },
+                      { label: "Manejo anterior", value: "previous_management" },
+                      { label: "Recomendação não seguida", value: "recommendation_not_followed" },
+                    ].map((option) => {
+                      const selected = arrivalExternalFactors.includes(option.value);
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={[
+                            buttonBaseStyles,
+                            selected ? buttonSelected : buttonUnselected,
+                            "p-3 text-sm sm:text-base",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() =>
+                            setArrivalExternalFactors((current) =>
+                              current.includes(option.value)
+                                ? current.filter((item) => item !== option.value)
+                                : [...current, option.value]
+                            )
+                          }
+                          aria-pressed={selected}
+                        >
+                          <span className="font-semibold">{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-900">Nota opcional (até 120 caracteres)</p>
+                  <span className="text-xs text-slate-500">{arrivalOptionalNote.length}/120</span>
+                </div>
+                <Textarea
+                  name="arrivalOptionalNote"
+                  placeholder="Observação curta sobre o contexto (opcional)."
+                  value={arrivalOptionalNote}
+                  onChange={(event) => setArrivalOptionalNote(event.target.value.slice(0, 120))}
+                  rows={3}
+                  maxLength={120}
+                  helper="Opcional e sem dados sensíveis."
+                />
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
             <div className="space-y-4">
               {/* Seção opcional; não altera passos nem a lógica de envio do alerta. */}
               <details className="rounded-2xl border border-amber-400 bg-amber-50 p-4 shadow-sm">
@@ -779,7 +916,7 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-4">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Espécie</p>
@@ -795,7 +932,7 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className="space-y-4">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Número de animais afetados</p>
@@ -811,7 +948,7 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-4">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Gravidade percebida</p>
@@ -851,7 +988,7 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="space-y-5">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Contexto crítico (rápido)</p>
@@ -1165,7 +1302,7 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="space-y-5">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Região e envio</p>
@@ -1304,7 +1441,7 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <div className="space-y-5">
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Revisão antes do envio</p>
@@ -1393,7 +1530,13 @@ export default function AlertFormClient() {
             </div>
           )}
 
-          {step === 6 ? (
+          {step === 0 ? (
+            <div className="flex justify-end">
+              <Button type="button" className="w-full sm:w-auto px-6 py-3 text-base" onClick={goNext}>
+                Registrar e continuar
+              </Button>
+            </div>
+          ) : step === 7 ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button type="button" variant="secondary" className="px-4 py-2" onClick={goBack}>
                 Voltar para editar
