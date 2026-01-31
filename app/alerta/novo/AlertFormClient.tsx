@@ -176,7 +176,6 @@ const parasiteObservationOptions = [
   "Presença de carrapatos",
   "Alta carga de ectoparasitas",
   "Suspeita clínica de hemoparasitas",
-  "Complexo carrapato–hemoparasita",
   "Complexo carrapato–hemoparasita (observação clínica)",
   "Outro (campo livre)",
 ];
