@@ -171,6 +171,16 @@ const detailOptions: Record<string, string[]> = {
   ],
 };
 
+const parasiteAlertType = "Quadro parasitário / falha de controle parasitário";
+const parasiteObservationOptions = [
+  "Presença de carrapatos",
+  "Alta carga de ectoparasitas",
+  "Suspeita clínica de hemoparasitas",
+  "Complexo carrapato–hemoparasita",
+  "Complexo carrapato–hemoparasita (observação clínica)",
+  "Outro (campo livre)",
+];
+
 const buttonBaseStyles =
   "rounded-xl border text-left text-base transition shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500";
 const buttonUnselected = "border-slate-200 bg-white text-slate-800 hover:border-emerald-200";
@@ -283,6 +293,8 @@ export default function AlertFormClient() {
   const [arrivalSituationFound, setArrivalSituationFound] = useState("");
   const [arrivalExternalFactors, setArrivalExternalFactors] = useState<string[]>([]);
   const [arrivalOptionalNote, setArrivalOptionalNote] = useState("");
+  const [parasiteObservationOption, setParasiteObservationOption] = useState("");
+  const [parasiteObservationNote, setParasiteObservationNote] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -405,6 +417,8 @@ export default function AlertFormClient() {
     setDrugCategory([]);
     setDrugInterval("");
     setEnvironmentSignals([]);
+    setParasiteObservationOption("");
+    setParasiteObservationNote("");
     setErrors([]);
   };
 
@@ -415,6 +429,14 @@ export default function AlertFormClient() {
     if (herdCount.startsWith("Mais")) return 21;
     return 0;
   }, [herdCount]);
+
+  const parasiteObservationValue = useMemo(() => {
+    if (alertType !== parasiteAlertType) return "";
+    const trimmed = parasiteObservationNote.trim();
+    if (parasiteObservationOption === "Outro (campo livre)") return trimmed;
+    if (parasiteObservationOption) return parasiteObservationOption;
+    return trimmed;
+  }, [alertType, parasiteObservationNote, parasiteObservationOption]);
 
   const validateCurrentStep = () => {
     const missing: string[] = [];
@@ -468,6 +490,8 @@ export default function AlertFormClient() {
         Object.keys(arrivalContextEntries).length > 0 ? arrivalContextEntries : null;
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
+      const parasiteObservation = parasiteObservationValue ? parasiteObservationValue : null;
+
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
         state,
@@ -513,6 +537,7 @@ export default function AlertFormClient() {
             : null,
           herdCountLabel: herdCount,
           country,
+          ...(parasiteObservation ? { parasiteObservation } : {}),
         },
         source: "pilot",
       });
@@ -775,6 +800,41 @@ export default function AlertFormClient() {
                     </div>
                   </div>
                 ) : null}
+
+                {alertType === parasiteAlertType && (
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-slate-900">
+                        Observação descritiva adicional (opcional)
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        Campo observacional, sem diagnóstico ou interpretação clínica.
+                      </p>
+                    </div>
+                    <Select
+                      name="parasiteObservationOption"
+                      label="Lista rápida (opcional)"
+                      value={parasiteObservationOption}
+                      onChange={(event) => setParasiteObservationOption(event.target.value)}
+                      helper="Selecione uma opção rápida ou escreva livremente abaixo."
+                    >
+                      <option value="">Selecione (opcional)</option>
+                      {parasiteObservationOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      name="parasiteObservationNote"
+                      label="Detalhe em texto livre (opcional)"
+                      value={parasiteObservationNote}
+                      onChange={(event) => setParasiteObservationNote(event.target.value.slice(0, 120))}
+                      maxLength={120}
+                      helper="Descrição breve. Se a lista não atender, escreva em texto livre."
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1327,6 +1387,9 @@ export default function AlertFormClient() {
                     <ul className="space-y-1">
                       <li>• Sinal: {alertType || "—"}</li>
                       {alertDetails.length > 0 && <li>• Detalhes: {alertDetails.join(", ")}</li>}
+                      {parasiteObservationValue && (
+                        <li>• Observação descritiva: {parasiteObservationValue}</li>
+                      )}
                       <li>• Espécie: {species || "—"}</li>
                       <li>• Nº animais: {herdCount || "—"}</li>
                       <li>• Gravidade: {severity || "—"}</li>
