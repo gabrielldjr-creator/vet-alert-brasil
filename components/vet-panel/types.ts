@@ -37,6 +37,7 @@ export type AlertRecord = {
     } | null;
     herdCountLabel?: string;
     country?: string;
+    parasiteObservation?: string;
   };
 };
 

@@ -46,6 +46,7 @@ export function AlertCard({ alert }: AlertCardProps) {
   const herdCountLabel = alert.context?.herdCountLabel ?? alert.herdCount;
   const casesLabel = alert.cases ? `${alert.cases} casos` : herdCountLabel ? `${herdCountLabel} casos` : "Casos não informados";
   const detailsLabel = alert.context?.alertDetails?.length ? alert.context.alertDetails.join(", ") : null;
+  const parasiteObservation = alert.context?.parasiteObservation?.trim() || null;
   const environmentSignalsLabel = alert.context?.environment?.environmentSignals?.length
     ? alert.context.environment.environmentSignals.join(", ")
     : null;
@@ -73,6 +74,11 @@ export function AlertCard({ alert }: AlertCardProps) {
         {detailsLabel && (
           <p>
             <span className="font-semibold text-slate-800">Detalhes rápidos:</span> {detailsLabel}
+          </p>
+        )}
+        {parasiteObservation && (
+          <p className="text-slate-600">
+            <span className="font-semibold text-slate-700">Observação clínica:</span> {parasiteObservation}
           </p>
         )}
         {alert.context?.eventOnset && (
