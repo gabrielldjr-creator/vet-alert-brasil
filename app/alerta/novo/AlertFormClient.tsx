@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "../../../components/Button";
@@ -242,6 +243,8 @@ function QuickSelect({
 
 export default function AlertFormClient() {
   const router = useRouter();
+  const [showEthicsModal, setShowEthicsModal] = useState(false);
+  const [ethicsConfirmed, setEthicsConfirmed] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -257,6 +260,18 @@ export default function AlertFormClient() {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasAcknowledged = window.localStorage.getItem("vetalert-ethics-ack") === "true";
+    setShowEthicsModal(!hasAcknowledged);
+  }, []);
+
+  const handleEthicsProceed = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("vetalert-ethics-ack", "true");
+    setShowEthicsModal(false);
   }, []);
 
   const [species, setSpecies] = useState("");
@@ -574,28 +589,69 @@ export default function AlertFormClient() {
   }, [SpeechRecognition]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Fluxo de campo</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Registrar alerta</h1>
-        <p className="text-sm text-slate-600">Alta visibilidade, poucos toques, foco em campo.</p>
-      </div>
-
-      <Card className="p-6 shadow-sm">
-        <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
-            <span>Passo {step + 1} de 7</span>
-            <div className="flex gap-2" aria-hidden>
-              {[0, 1, 2, 3, 4, 5, 6].map((index) => (
-                <span
-                  key={index}
-                  className={`h-1 w-10 rounded-full transition ${
-                    step >= index ? "bg-emerald-600" : "bg-slate-200"
-                  }`}
-                />
-              ))}
+    <>
+      {showEthicsModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <Card className="w-full max-w-xl space-y-4 p-6">
+            <h2 className="text-lg font-semibold text-slate-900">Declaração de ciência</h2>
+            <div className="space-y-3 text-sm text-slate-700">
+              <p>
+                O VetAlert é uma ferramenta complementar e não substitui as obrigações éticas, legais e técnicas do
+                médico-veterinário, nem as notificações oficiais obrigatórias aos sistemas de vigilância sanitária.
+              </p>
+              <p>
+                O uso da plataforma não exime responsabilidades profissionais nem substitui investigação clínica, diagnóstica
+                ou epidemiológica adequada.
+              </p>
+              <p>
+                🔎 O texto completo sobre limites e uso ético está disponível na página{" "}
+                <Link href="/uso-etico" className="font-semibold text-emerald-700 hover:text-emerald-800">
+                  “Uso Ético dos Sinais Regionais do VetAlert”.
+                </Link>
+              </p>
             </div>
-          </div>
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                checked={ethicsConfirmed}
+                onChange={(event) => setEthicsConfirmed(event.target.checked)}
+              />
+              <span>Li e estou ciente. Desejo prosseguir.</span>
+            </label>
+            <Button
+              type="button"
+              onClick={handleEthicsProceed}
+              disabled={!ethicsConfirmed}
+              className="w-full"
+            >
+              Prosseguir para registrar sinal
+            </Button>
+          </Card>
+        </div>
+      ) : null}
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Fluxo de campo</p>
+          <h1 className="text-3xl font-semibold text-slate-900">Registrar alerta</h1>
+          <p className="text-sm text-slate-600">Alta visibilidade, poucos toques, foco em campo.</p>
+        </div>
+
+        <Card className="p-6 shadow-sm">
+          <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <span>Passo {step + 1} de 7</span>
+              <div className="flex gap-2" aria-hidden>
+                {[0, 1, 2, 3, 4, 5, 6].map((index) => (
+                  <span
+                    key={index}
+                    className={`h-1 w-10 rounded-full transition ${
+                      step >= index ? "bg-emerald-600" : "bg-slate-200"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
 
           {step === 0 && (
             <div className="space-y-4">
@@ -1491,5 +1547,6 @@ export default function AlertFormClient() {
         </form>
       </Card>
     </div>
+    </>
   );
 }
