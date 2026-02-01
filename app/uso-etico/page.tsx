@@ -114,12 +114,25 @@ export default function UsoEticoPage() {
             <li>substituir diagnóstico;</li>
             <li>reivindicar autoridade.</li>
           </ul>
-          <p className="text-sm text-slate-700">
-            O uso do VetAlert não substitui, não altera e não exime o cumprimento das obrigações éticas, legais e técnicas do
-            médico-veterinário. O profissional permanece responsável pela investigação clínica e epidemiológica adequada, pelos
-            procedimentos diagnósticos pertinentes, pelo registro técnico fidedigno e pelas notificações oficiais obrigatórias.
-            O VetAlert é complementar e não substitui sistemas oficiais de vigilância sanitária.
-          </p>
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <p className="font-semibold text-slate-900">Responsabilidade profissional e sistemas oficiais</p>
+            <p>
+              O uso do VetAlert é complementar e não substitui o cumprimento das obrigações éticas, legais e técnicas do
+              médico-veterinário junto aos Conselhos Regionais e Federal, bem como aos órgãos municipais, estaduais e federais.
+            </p>
+            <p>Cada médico-veterinário permanece responsável por:</p>
+            <ul className="list-disc space-y-2 pl-5">
+              <li>investigação clínica e epidemiológica adequada;</li>
+              <li>realização dos procedimentos diagnósticos pertinentes;</li>
+              <li>registro técnico fidedigno;</li>
+              <li>notificação tempestiva aos sistemas oficiais, quando obrigatória;</li>
+              <li>observância das normas, resoluções e programas oficiais de vigilância e controle sanitário vigentes.</li>
+            </ul>
+            <p>
+              O VetAlert não substitui notificações oficiais, não confirma eventos sanitários e não exime responsabilidades
+              profissionais.
+            </p>
+          </div>
         </Card>
       </div>
 
