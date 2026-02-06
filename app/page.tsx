@@ -15,26 +15,26 @@ export default function Home() {
           Monitoramento clínico regional — visão compartilhada entre veterinários.
         </h1>
         <p className="max-w-2xl text-base text-slate-700 sm:text-lg">
-          Sinais clínicos suspeitos registrados de forma anônima por veterinários da sua região, atualizados em tempo real.
+          Sinais clínicos descritivos registrados de forma anônima por veterinários da sua região, atualizados em tempo real.
         </p>
         <p className="text-sm uppercase tracking-wide text-slate-500">
-          Camada pré-diagnóstica de vigilância clínica agregada.
+          Camada pré-diagnóstica de monitoramento descritivo agregado.
         </p>
         <div className="space-y-4">
           <h1 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-            Inteligência epidemiológica regional, construída pelo campo.
+            Leitura situacional regional, construída pelo campo.
           </h1>
           <p className="max-w-2xl text-lg text-slate-700">
-            Registre sinais observados no consultório ou na fazenda e acompanhe padrões regionais em tempo real. Alertas 100% anônimos
-            e sem orientação clínica. Gratuito para veterinários.
+            Registre sinais observados no consultório ou na fazenda e acompanhe padrões regionais em tempo real. Registros 100%
+            anônimos e sem orientação clínica. Gratuito para veterinários.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button href="/alerta/novo" className="w-full sm:w-auto px-6 py-3 text-base">
-            Registrar alerta
+            Registrar sinal
           </Button>
           <Button href="/dashboard" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
-            Ver painel de alertas
+            Ver painel situacional
           </Button>
         </div>
       </section>
@@ -45,7 +45,7 @@ export default function Home() {
           <ul className="space-y-2 text-sm text-slate-700">
             <li>• Casos atendidos de forma isolada não revelam padrões regionais</li>
             <li>• A confirmação diagnóstica ocorre após o impacto inicial</li>
-            <li>• Alertas oficiais surgem quando o evento já está estabelecido</li>
+            <li>• Comunicados oficiais surgem quando o evento já está estabelecido</li>
             <li>• Entre a suspeita individual e o laudo, há um vazio informacional</li>
           </ul>
         </Card>
@@ -81,7 +81,7 @@ export default function Home() {
             <li>• Não atribui causa</li>
             <li>• Não recomenda conduta</li>
             <li>• Não substitui exames laboratoriais</li>
-            <li>• Não atua como notificação oficial</li>
+            <li>• Não substitui o fluxo oficial</li>
             <li>• Não interfere na autonomia clínica</li>
           </ul>
           <p className="text-sm text-slate-600">O uso do sistema não altera responsabilidades legais existentes.</p>
@@ -93,13 +93,12 @@ export default function Home() {
         <Card className="space-y-4 border-slate-200 p-6">
           <ol className="space-y-2 text-sm text-slate-700">
             <li>1. Suspeita clínica individual</li>
-            <li>2. Vigilância sindrômica clínica agregada (Vet Alert Brasil)</li>
-            <li>3. Confirmação diagnóstica e notificação oficial</li>
+            <li>2. Leitura situacional clínica agregada (Vet Alert Brasil)</li>
+            <li>3. Confirmação diagnóstica e fluxo oficial</li>
           </ol>
           <p className="text-sm text-slate-700">Cada camada cumpre uma função distinta e não substitui as demais.</p>
           <p className="text-sm text-slate-600">
-            Doenças de notificação obrigatória devem seguir os protocolos oficiais independentemente do uso do Vet Alert
-            Brasil.
+            Situações de comunicação obrigatória devem seguir o fluxo oficial independentemente do uso do Vet Alert Brasil.
           </p>
         </Card>
       </section>

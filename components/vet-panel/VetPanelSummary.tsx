@@ -6,7 +6,7 @@ export type VetPanelSummaryProps = {
 };
 
 export function VetPanelSummary({ lines, subtitle }: VetPanelSummaryProps) {
-  const displayLines = lines.length ? lines : ["Sem alertas suficientes para gerar um resumo."];
+  const displayLines = lines.length ? lines : ["Sem registros suficientes para gerar um resumo."];
 
   return (
     <Card className="space-y-3 p-6">

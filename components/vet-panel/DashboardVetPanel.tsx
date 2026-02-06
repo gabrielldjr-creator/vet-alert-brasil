@@ -12,6 +12,7 @@ import { VetPanelFilters } from "./VetPanelFilters";
 import { VetPanelSummary } from "./VetPanelSummary";
 import { VetPanelFeed } from "./VetPanelFeed";
 import { AlertRecord, VetPanelFiltersState } from "./types";
+import { mapAlertGroupLabel } from "./alertLabeling";
 
 const PILOT_MODE =
   process.env.NEXT_PUBLIC_PILOT_MODE === "true" || process.env.NEXT_PUBLIC_PILOT_MODE === "1";
@@ -28,10 +29,10 @@ const speciesOptions = [
 
 const alertGroupOptions = [
   "Síndromes Clínicas",
-  "Alertas Populacionais",
+  "Registros Populacionais",
   "Ambientais / Toxicológicos",
   "Bem-estar / Manejo",
-  "Síndromes Compatíveis com Zoonoses",
+  "Sinais clínicos atípicos (interface ampliada)",
   "Outro",
 ];
 
@@ -158,7 +159,7 @@ export function DashboardVetPanel() {
         }));
         setAlerts(data);
       } catch (error) {
-        console.error("Erro ao carregar alertas", error);
+        console.error("Erro ao carregar registros", error);
       }
     };
 
@@ -174,7 +175,7 @@ export function DashboardVetPanel() {
         setAlerts(data);
       },
       (error) => {
-        console.error("Erro ao sincronizar alertas", error);
+        console.error("Erro ao sincronizar registros", error);
       }
     );
 
@@ -238,7 +239,12 @@ export function DashboardVetPanel() {
   const filteredAlerts = useMemo(() => {
     return scopedAlerts.filter((alert) => {
       if (filters.species && normalizeText(alert.species) !== normalizeText(filters.species)) return false;
-      if (filters.alertGroup && normalizeText(alert.alertGroup) !== normalizeText(filters.alertGroup)) return false;
+      if (
+        filters.alertGroup &&
+        normalizeText(mapAlertGroupLabel(alert.alertGroup)) !== normalizeText(mapAlertGroupLabel(filters.alertGroup))
+      ) {
+        return false;
+      }
       if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
       if (filters.regionIBGE !== "all" && normalizeText(alert.regionIBGE) !== normalizeText(filters.regionIBGE)) {
         return false;
@@ -255,7 +261,7 @@ export function DashboardVetPanel() {
     if (filteredAlerts.length === 0) return [];
 
     const groupCounts = filteredAlerts.reduce<Record<string, number>>((acc, alert) => {
-      const key = alert.alertGroup || "Sem grupo";
+      const key = mapAlertGroupLabel(alert.alertGroup) || "Sem grupo";
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
@@ -273,10 +279,10 @@ export function DashboardVetPanel() {
     const windowLabel = timeWindowLabel(filters.timeWindow);
 
     const lines = [
-      `${filteredAlerts.length} alertas registrados ${windowLabel} ${scopeLabel}.`,
+      `${filteredAlerts.length} registros descritivos ${windowLabel} ${scopeLabel}.`,
       topGroup ? `Grupo mais frequente: ${topGroup[0]} (${topGroup[1]}).` : null,
       topSpecies ? `Espécies mais citadas: ${topSpecies[0]} (${topSpecies[1]}).` : null,
-      urgentCount ? `${urgentCount} alertas marcados como urgentes ${windowLabel}.` : null,
+      urgentCount ? `${urgentCount} registros marcados como urgentes ${windowLabel}.` : null,
     ].filter((line): line is string => Boolean(line));
 
     return lines.slice(0, 3);
@@ -308,26 +314,36 @@ export function DashboardVetPanel() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+      <Card className="border-emerald-100 bg-emerald-50/70 p-6 text-sm text-emerald-900">
+        <p>
+          Este painel apresenta registros descritivos e anônimos do campo veterinário.
+          <br />
+          Não constitui notificação oficial, não confirma diagnósticos e não gera ações sanitárias automáticas.
+          <br />
+          Em situações de suspeita de doenças de notificação obrigatória, o fluxo oficial deve ser seguido conforme legislação
+          vigente.
+        </p>
+      </Card>
       <section className="flex flex-col gap-3">
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Painel autenticado</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Painel situacional autenticado</p>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-slate-900">Alertas clínicos descritivos da sua região</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">Registros clínicos descritivos da sua região</h1>
             <p className="max-w-3xl text-base text-slate-700">
-              Visualize alertas enviados por veterinários com informações descritivas, sem diagnósticos ou dados sensíveis. Ajuste o
-              escopo regional, a janela de tempo e filtros rápidos para identificar padrões de atenção.
+              Visualize registros enviados por veterinários com informações descritivas, sem diagnósticos ou dados sensíveis. Ajuste
+              o escopo regional, a janela de tempo e filtros rápidos para identificar padrões de atenção.
             </p>
           </div>
           <Button
             href="/alerta/novo"
             className="bg-amber-600 text-white shadow-md shadow-amber-200 hover:bg-amber-700 focus-visible:outline-amber-600"
           >
-            Registrar novo alerta
+            Registrar novo sinal
           </Button>
         </div>
         {registrationFlag && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
-            Alerta registrado com sucesso. O painel foi atualizado automaticamente.
+            Registro salvo com sucesso. O painel foi atualizado automaticamente.
           </div>
         )}
       </section>

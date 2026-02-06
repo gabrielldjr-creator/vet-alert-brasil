@@ -30,7 +30,7 @@ export default function UsoEticoPage() {
             <li>O VetAlert não é uma sirene.</li>
             <li>O VetAlert não é um sistema de alarme.</li>
             <li>O VetAlert não realiza diagnósticos.</li>
-            <li>O VetAlert não confirma surtos.</li>
+            <li>O VetAlert não confirma concentrações de ocorrências.</li>
           </ul>
         </Card>
 
@@ -46,7 +46,7 @@ export default function UsoEticoPage() {
             <li>repetição de quadros em uma mesma região;</li>
             <li>recorrência temporal de sinais semelhantes;</li>
             <li>pressão clínica regional percebida por profissionais;</li>
-            <li>contexto epidemiológico descritivo, sem confirmação de eventos.</li>
+            <li>contexto situacional descritivo, sem confirmação de eventos.</li>
           </ul>
         </Card>
 
@@ -83,7 +83,7 @@ export default function UsoEticoPage() {
             <div>
               <p className="font-semibold text-slate-900">Exemplos inadequados (não utilizar)</p>
               <ul className="list-disc space-y-2 pl-5">
-                <li>“Está tendo surto.”</li>
+                <li>“Há uma concentração de ocorrências.”</li>
                 <li>“O VetAlert confirmou.”</li>
                 <li>“Isso prova que…”</li>
               </ul>
@@ -122,15 +122,14 @@ export default function UsoEticoPage() {
             </p>
             <p>Cada médico-veterinário permanece responsável por:</p>
             <ul className="list-disc space-y-2 pl-5">
-              <li>investigação clínica e epidemiológica adequada;</li>
+              <li>investigação clínica e situacional adequada;</li>
               <li>realização dos procedimentos diagnósticos pertinentes;</li>
               <li>registro técnico fidedigno;</li>
-              <li>notificação tempestiva aos sistemas oficiais, quando obrigatória;</li>
-              <li>observância das normas, resoluções e programas oficiais de vigilância e controle sanitário vigentes.</li>
+              <li>comunicação tempestiva ao fluxo oficial, quando obrigatória;</li>
+              <li>observância das normas, resoluções e programas oficiais vigentes.</li>
             </ul>
             <p>
-              O VetAlert não substitui notificações oficiais, não confirma eventos sanitários e não exime responsabilidades
-              profissionais.
+              O VetAlert não substitui fluxos oficiais, não confirma eventos de campo e não exime responsabilidades profissionais.
             </p>
           </div>
         </Card>

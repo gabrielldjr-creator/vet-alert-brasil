@@ -30,7 +30,7 @@ const alertCategories = [
   {
     group: "Síndromes Clínicas",
     options: [
-      "Sinais neurológicos",
+      "Manifestações neurológicas inespecíficas",
       "Síndrome respiratória",
       "Síndrome digestiva",
       "Lesões cutâneas / teciduais",
@@ -40,7 +40,7 @@ const alertCategories = [
     ],
   },
   {
-    group: "Alertas Populacionais",
+    group: "Registros Populacionais",
     options: [
       "Mesmo sintoma em vários animais",
       "Aumento anormal da mortalidade",
@@ -70,34 +70,34 @@ const alertCategories = [
     ],
   },
   {
-    group: "Síndromes Compatíveis com Zoonoses",
+    group: "Sinais clínicos atípicos (interface ampliada)",
     options: [
-      "Síndrome neurológica com agressividade",
-      "Síndrome febril com icterícia",
-      "Abortos associados a doença humana na propriedade",
-      "Lesões cutâneas potencialmente transmissíveis",
+      "Síndrome neurológica atípica",
+      "Síndrome febril atípica",
+      "Evento reprodutivo atípico",
+      "Lesões cutâneas atípicas",
     ],
   },
-  { group: "Outro", options: ["Outro sinal preocupante (descrição livre)"] },
+  { group: "Outro", options: ["Outro sinal descritivo (campo livre)"] },
 ];
 
-const herdCounts = ["1", "2 a 5", "6 a 20", "Mais de 20 (surto)"];
+const herdCounts = ["1", "2 a 5", "6 a 20", "Mais de 20 (concentração de ocorrências)"];
 const severityLevels = ["Atenção", "Preocupante", "Urgente"];
 
 const feedSensitiveAlerts = new Set([
   "Síndrome digestiva",
-  "Sinais neurológicos",
+  "Manifestações neurológicas inespecíficas",
   "Alterações reprodutivas",
   "Morte súbita sem causa aparente",
 ]);
 
 const pharmaSensitiveAlerts = new Set([
-  "Sinais neurológicos",
+  "Manifestações neurológicas inespecíficas",
   "Alterações reprodutivas",
   "Morte súbita sem causa aparente",
   "Aumento anormal da mortalidade",
-  "Síndrome neurológica com agressividade",
-  "Síndrome febril com icterícia",
+  "Síndrome neurológica atípica",
+  "Síndrome febril atípica",
   "Quadro parasitário / falha de controle parasitário",
 ]);
 
@@ -158,7 +158,7 @@ const detailOptions: Record<string, string[]> = {
     "Salivação intensa",
   ],
   "Síndrome respiratória": ["Dispneia", "Tosse em grupo", "Secreção nasal"],
-  "Sinais neurológicos": ["Ataxia", "Tremores", "Convulsões", "Paralisia", "Alteração comportamental"],
+  "Manifestações neurológicas inespecíficas": ["Ataxia", "Tremores", "Convulsões", "Paralisia", "Alteração comportamental"],
   "Lesões cutâneas / teciduais": ["Necrose", "Úlceras", "Edema", "Dermatite"],
   "Alterações reprodutivas": ["Abortos", "Infertilidade", "Retenção de placenta", "Natimortos"],
   "Quadro parasitário / falha de controle parasitário": [
@@ -454,10 +454,10 @@ export default function AlertFormClient() {
 
   const validateCurrentStep = () => {
     const missing: string[] = [];
-    if (step === 0 && !alertType) missing.push("Escolha o tipo de alerta");
+    if (step === 0 && !alertType) missing.push("Escolha o tipo de sinal");
     if (step === 1 && !species) missing.push("Selecione a espécie");
     if (step === 2 && !herdCount) missing.push("Informe número de animais afetados");
-    if (step === 3 && !severity) missing.push("Classifique a gravidade");
+    if (step === 3 && !severity) missing.push("Classifique o nível de atenção");
     return missing;
   };
 
@@ -475,11 +475,11 @@ export default function AlertFormClient() {
     event?.preventDefault();
     const missing: string[] = [];
     if (!species) missing.push("Selecione a espécie");
-    if (!alertType) missing.push("Escolha o tipo de alerta");
+    if (!alertType) missing.push("Escolha o tipo de sinal");
     if (!herdCount) missing.push("Informe número de animais afetados");
     if (!state) missing.push("Confirme o estado");
     if (!cityCode) missing.push("Selecione o município");
-    if (!severity) missing.push("Classifique a gravidade");
+    if (!severity) missing.push("Classifique o nível de atenção");
     setErrors(missing);
 
     if (missing.length > 0) return;
@@ -558,8 +558,8 @@ export default function AlertFormClient() {
 
       router.push("/dashboard");
     } catch (error) {
-      console.error("Erro ao salvar alerta:", error);
-      setSubmitError("Erro ao salvar alerta. Tente novamente.");
+      console.error("Erro ao salvar registro:", error);
+      setSubmitError("Erro ao salvar registro. Tente novamente.");
     }
   };
 
@@ -597,11 +597,11 @@ export default function AlertFormClient() {
             <div className="space-y-3 text-sm text-slate-700">
               <p>
                 O VetAlert é uma ferramenta complementar e não substitui as obrigações éticas, legais e técnicas do
-                médico-veterinário, nem as notificações oficiais obrigatórias aos sistemas de vigilância sanitária.
+                médico-veterinário, nem os fluxos oficiais obrigatórios previstos em legislação vigente.
               </p>
               <p>
                 O uso da plataforma não exime responsabilidades profissionais nem substitui investigação clínica, diagnóstica
-                ou epidemiológica adequada.
+                ou situacional adequada.
               </p>
               <p>
                 🔎 O texto completo sobre limites e uso ético está disponível na página{" "}
@@ -631,9 +631,19 @@ export default function AlertFormClient() {
         </div>
       ) : null}
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+        <Card className="border-emerald-100 bg-emerald-50/70 p-6 text-sm text-emerald-900">
+          <p>
+            Este painel apresenta registros descritivos e anônimos do campo veterinário.
+            <br />
+            Não constitui notificação oficial, não confirma diagnósticos e não gera ações sanitárias automáticas.
+            <br />
+            Em situações de suspeita de doenças de notificação obrigatória, o fluxo oficial deve ser seguido conforme legislação
+            vigente.
+          </p>
+        </Card>
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Fluxo de campo</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Registrar alerta</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">Registrar sinal</h1>
           <p className="text-sm text-slate-600">Alta visibilidade, poucos toques, foco em campo.</p>
         </div>
 
@@ -655,7 +665,7 @@ export default function AlertFormClient() {
 
           {step === 0 && (
             <div className="space-y-4">
-              {/* Seção opcional; não altera passos nem a lógica de envio do alerta. */}
+              {/* Seção opcional; não altera passos nem a lógica de envio do registro. */}
               <details className="rounded-2xl border border-amber-400 bg-amber-50 p-4 shadow-sm">
                 <summary className="cursor-pointer text-sm font-semibold text-amber-700">
                   Registrar contexto da chegada (opcional)
@@ -774,7 +784,7 @@ export default function AlertFormClient() {
                 <p className="text-sm text-slate-600">Selecione a categoria, depois o sinal específico.</p>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Categoria de alerta">
+              <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Categoria de registro">
                 {alertCategories.map((group) => {
                   const active = alertGroup === group.group;
                   return (
@@ -929,7 +939,7 @@ export default function AlertFormClient() {
           {step === 3 && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <p className="text-lg font-semibold text-slate-900">Gravidade percebida</p>
+                <p className="text-lg font-semibold text-slate-900">Nível de atenção percebido</p>
                 <p className="text-sm text-slate-600">Cores fortes apenas aqui.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -1036,7 +1046,7 @@ export default function AlertFormClient() {
                         "Proximidade de atividade agrícola",
                         "Mudança de fonte de água",
                         "Evento climático extremo recente",
-                        // Contexto ambiental apenas; não implica causalidade, diagnóstico ou notificação.
+                        // Contexto ambiental apenas; não implica causalidade, diagnóstico ou fluxo oficial.
                         "Plantas tóxicas naturalmente presentes no ambiente / pastagem",
                       ].map((signal) => {
                         const selected = environmentSignals.includes(signal);
@@ -1333,7 +1343,7 @@ export default function AlertFormClient() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <p className="text-xs text-slate-600 sm:col-span-2">
-                    O município é a referência geográfica principal. A região epidemiológica é apenas informativa.
+                    O município é a referência geográfica principal. A região do IBGE é apenas informativa.
                   </p>
                   <div className="space-y-2">
                     <Input
@@ -1356,7 +1366,7 @@ export default function AlertFormClient() {
                   </div>
                   <Select
                     name="regionIBGE"
-                    label="Região epidemiológica (informativa)"
+                    label="Região do IBGE (informativa)"
                     value={regionIBGE}
                     onChange={(event) => setRegionIBGE(event.target.value)}
                     helper="Opcional. Preenchida automaticamente quando disponível."
@@ -1424,13 +1434,13 @@ export default function AlertFormClient() {
               <div className="space-y-1">
                 <p className="text-lg font-semibold text-slate-900">Revisão antes do envio</p>
                 <p className="text-sm text-slate-600">
-                  Confira cada item e confirme para registrar o alerta.
+                  Confira cada item e confirme para registrar o sinal.
                 </p>
               </div>
               <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-sm text-amber-900">
                 <ul className="space-y-1">
                   <li>• Confira novamente a espécie antes de enviar.</li>
-                  <li>• Alertas são anônimos e não substituem notificações oficiais.</li>
+                  <li>• Registros são anônimos e não substituem fluxos oficiais.</li>
                   <li>• Erros são esperados no trabalho de campo — revise com calma.</li>
                 </ul>
               </div>
@@ -1447,7 +1457,7 @@ export default function AlertFormClient() {
                       )}
                       <li>• Espécie: {species || "—"}</li>
                       <li>• Nº animais: {herdCount || "—"}</li>
-                      <li>• Gravidade: {severity || "—"}</li>
+                      <li>• Nível de atenção: {severity || "—"}</li>
                     </ul>
                   </div>
                   <div className="space-y-2">

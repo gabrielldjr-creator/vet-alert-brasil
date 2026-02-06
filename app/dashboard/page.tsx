@@ -4,7 +4,7 @@ import { DashboardVetPanel } from "../../components/vet-panel/DashboardVetPanel"
 export const metadata = {
   title: "Painel regional | Vet Alert Brasil",
   description:
-    "Painel restrito para veterinários autenticados via link mágico. Alertas seguem o estado do CRMV do perfil verificado.",
+    "Painel restrito para veterinários autenticados via link mágico. Registros seguem o estado do CRMV do perfil verificado.",
 };
 
 export default function DashboardPage() {

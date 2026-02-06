@@ -3,7 +3,7 @@ import { Card } from "../../components/Card";
 export const metadata = {
   title: "Privacidade | Vet Alert Brasil",
   description:
-    "Alertas são sinais anônimos e restritos a veterinários autenticados via link mágico. Estado do CRMV define o escopo regional exibido.",
+    "Registros são sinais anônimos e restritos a veterinários autenticados via link mágico. Estado do CRMV define o escopo regional exibido.",
 };
 
 export default function PrivacyPage() {
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-slate-900">1. QUEM SOMOS</h2>
           <p>
-            Vet Alert Brasil é um projeto independente de inteligência epidemiológica veterinária, de caráter experimental e
+            Vet Alert Brasil é um projeto independente de leitura situacional veterinária, de caráter experimental e
             colaborativo, com finalidade exclusivamente estatística, preventiva e informativa.
           </p>
           <p className="font-semibold text-slate-800">Responsável pelo projeto e pelo tratamento dos dados:</p>
@@ -37,10 +37,10 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-slate-900">2. FINALIDADE DO PROJETO</h2>
           <p>O Vet Alert Brasil tem como objetivo:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Detectar tendências epidemiológicas regionais</li>
-            <li>Identificar surtos, contaminações e eventos sanitários</li>
-            <li>Produzir alertas coletivos baseados em dados agregados</li>
-            <li>Apoiar a saúde animal e o interesse sanitário coletivo</li>
+            <li>Detectar tendências regionais de campo</li>
+            <li>Identificar concentrações de ocorrências, contaminações e eventos de campo</li>
+            <li>Produzir registros coletivos baseados em dados agregados</li>
+            <li>Apoiar o cuidado animal e o interesse coletivo informado</li>
           </ul>
           <p>
             O projeto não realiza diagnósticos, não emite parecer clínico, não prescreve tratamentos e não interfere na autonomia
@@ -61,10 +61,10 @@ export default function PrivacyPage() {
             <li>❌ IP individualizado</li>
             <li>❌ Qualquer identificador direto ou indireto do médico-veterinário</li>
           </ul>
-          <p>🔹 Os dados coletados são exclusivamente epidemiológicos e anonimizados, tais como:</p>
+          <p>🔹 Os dados coletados são exclusivamente descritivos e anonimizados, tais como:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Espécie animal</li>
-            <li>Tipo de evento sanitário</li>
+            <li>Tipo de evento de campo</li>
             <li>Região, município ou código IBGE (em nível agregado)</li>
             <li>Data aproximada do evento</li>
           </ul>
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
           <p>Considerando que não há coleta de dados pessoais, o tratamento realizado pelo Vet Alert Brasil:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Enquadra-se como tratamento de dados anonimizados, conforme art. 12 da Lei nº 13.709/2018 (LGPD)</li>
-            <li>Atende ao interesse público sanitário e de saúde animal</li>
+            <li>Atende ao interesse coletivo e de saúde animal</li>
             <li>
               Observa integralmente os princípios da LGPD: finalidade, necessidade, transparência, segurança e prevenção
             </li>
@@ -95,8 +95,8 @@ export default function PrivacyPage() {
           <ul className="list-disc space-y-1 pl-5">
             <li>Análises estatísticas agregadas</li>
             <li>Identificação de padrões regionais</li>
-            <li>Geração de alertas sanitários coletivos</li>
-            <li>Estudos epidemiológicos não individualizados</li>
+            <li>Geração de registros coletivos</li>
+            <li>Estudos situacionais não individualizados</li>
           </ul>
           <p>❌ Os dados não são vendidos, ❌ não são utilizados para publicidade, ❌ não permitem rastreamento de usuários.</p>
         </section>
@@ -105,7 +105,7 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-slate-900">6. COMPARTILHAMENTO DE DADOS</h2>
           <p>Durante o piloto:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Dados anonimizados podem ser apresentados em relatórios estatísticos, mapas epidemiológicos e alertas regionais</li>
+            <li>Dados anonimizados podem ser apresentados em relatórios estatísticos, mapas regionais descritivos e registros regionais</li>
             <li>Sempre de forma agregada, sem identificação direta ou indireta de participantes</li>
           </ul>
         </section>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-slate-900">8. PRAZO DE RETENÇÃO</h2>
           <p>Os dados anonimizados poderão ser mantidos:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Pelo período necessário às análises epidemiológicas</li>
+            <li>Pelo período necessário às análises situacionais</li>
             <li>Para fins estatísticos, históricos e comparativos</li>
           </ul>
           <p>Por sua natureza anonimizada, não há associação a indivíduos.</p>
@@ -150,7 +150,7 @@ export default function PrivacyPage() {
             <li>O sistema é 100% anônimo</li>
             <li>Não há coleta de dados pessoais</li>
             <li>A participação é voluntária</li>
-            <li>O objetivo é exclusivamente epidemiológico e coletivo</li>
+            <li>O objetivo é exclusivamente situacional e coletivo</li>
           </ul>
         </section>
 
@@ -178,7 +178,7 @@ export default function PrivacyPage() {
 
       <div className="space-y-1 text-sm text-slate-600">
         <p className="text-base font-semibold text-slate-800">Vet Alert Brasil</p>
-        <p>Projeto independente de inteligência epidemiológica veterinária</p>
+        <p>Projeto independente de leitura situacional veterinária</p>
         <p>Idealização e coordenação: Tamara Nora Van Roy</p>
         <p>Santa Catarina – Brasil</p>
         <p>Início do piloto: segunda-feira, 12/01/2026</p>
