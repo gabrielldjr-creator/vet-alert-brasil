@@ -1,4 +1,5 @@
 import { AlertRecord } from "./types";
+import { mapAlertGroupLabel, mapAlertTypeLabel } from "./alertLabeling";
 
 const severityStyles: Record<string, string> = {
   Urgente: "border-amber-400 bg-amber-50 text-amber-900",
@@ -37,7 +38,8 @@ export function AlertCard({ alert }: AlertCardProps) {
   const createdAt = getAlertTimestamp(alert);
   const severityStyle = severityStyles[alert.severity ?? ""] ?? severityStyles["Atenção"];
   const pillStyle = severityPillStyles[alert.severity ?? ""] ?? severityPillStyles["Atenção"];
-  const signalLabel = alert.alertType || alert.alertGroup || "Sinal relatado";
+  const signalLabel =
+    mapAlertTypeLabel(alert.alertType) || mapAlertGroupLabel(alert.alertGroup) || "Sinal relatado";
   const speciesLabel = alert.species || "Espécie não informada";
   const stateLabel = alert.state || "UF";
   const regionLabel = alert.regionIBGE || alert.regionGroup;
@@ -61,7 +63,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         <p className="text-sm font-semibold text-slate-900">{speciesLabel}</p>
         <p className="text-sm text-slate-700">{signalLabel}</p>
         {alert.alertGroup && alert.alertType && (
-          <p className="text-xs text-slate-500">{alert.alertGroup}</p>
+          <p className="text-xs text-slate-500">{mapAlertGroupLabel(alert.alertGroup)}</p>
         )}
         {(regionLabel || municipalityLabel) && (
           <p className="text-xs text-slate-500">
@@ -126,7 +128,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         )}
         {alert.context?.notes && (
           <p>
-            <span className="font-semibold text-slate-800">Observações:</span> {alert.context.notes}
+            <span className="font-semibold text-slate-800">Observação clínica registrada (não exibida no painel)</span>
           </p>
         )}
       </div>

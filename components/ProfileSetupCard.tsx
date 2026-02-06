@@ -23,7 +23,7 @@ export function ProfileSetupCard({
   defaultCity = "",
   onComplete,
   title = "Complete seu perfil regional",
-  description = "Confirme o estado CRMV para liberar o registro imediato de alertas.",
+  description = "Confirme o estado CRMV para liberar o registro imediato de sinais.",
 }: ProfileSetupCardProps) {
   const [stateValue, setStateValue] = useState(defaultState);
   const [cityValue, setCityValue] = useState(defaultCity);
@@ -84,7 +84,7 @@ export function ProfileSetupCard({
             name="estadoCrmv"
             value={stateValue}
             onChange={(event) => setStateValue(event.target.value)}
-            helper="Usado para filtrar alertas regionais."
+            helper="Usado para filtrar registros regionais."
           >
             <option value="">Selecione</option>
             {stateOptions.map((uf) => (

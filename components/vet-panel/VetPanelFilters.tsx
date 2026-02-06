@@ -62,7 +62,7 @@ export function VetPanelFilters({
     <section className="space-y-6">
       <div>
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Filtros rápidos</p>
-        <p className="text-sm text-slate-600">Refine por escopo, espécie, gravidade e janela de tempo.</p>
+        <p className="text-sm text-slate-600">Refine por escopo, espécie, nível de atenção e janela de tempo.</p>
       </div>
 
       <div className="space-y-3">
@@ -99,7 +99,7 @@ export function VetPanelFilters({
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Grupo de alerta</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Grupo de registro</p>
         <div className="flex flex-wrap gap-2">
           <Chip
             label="Todos"
@@ -137,13 +137,13 @@ export function VetPanelFilters({
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Região (epidemiológica)</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Região (padrão regional)</p>
         <Select
-          label="Região (epidemiológica)"
-          name="regiao-epidemiologica"
+          label="Região (padrão regional)"
+          name="regiao-regional"
           value={filters.regionIBGE}
           onChange={(event) => updateFilter({ regionIBGE: event.target.value })}
-          helper="Usa a região epidemiológica do IBGE para agrupar municípios."
+          helper="Usa a região do IBGE para agrupar municípios."
           disabled={regionIBGEOptions.length === 0}
         >
           <option value="all">Todas</option>
@@ -156,7 +156,7 @@ export function VetPanelFilters({
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gravidade</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nível de atenção</p>
         <div className="flex flex-wrap gap-2">
           <Chip
             label="Todas"

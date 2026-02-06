@@ -3,7 +3,7 @@ import { Card } from "../../components/Card";
 export const metadata = {
   title: "Sobre | Vet Alert Brasil",
   description:
-    "Plataforma de inteligência epidemiológica exclusiva para veterinários convidados, com escopo regional definido pelo CRMV.",
+    "Plataforma de leitura situacional exclusiva para veterinários convidados, com escopo regional definido pelo CRMV.",
 };
 
 export default function AboutPage() {
