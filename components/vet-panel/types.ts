@@ -16,6 +16,12 @@ export type AlertRecord = {
   severity?: string;
   cases?: number;
   herdCount?: string;
+  arrival_context?: {
+    when_called?: string;
+    situation_found?: string;
+    external_factors?: string[];
+    optional_note?: string;
+  } | null;
   context?: {
     alertDetails?: string[];
     notes?: string;
@@ -23,12 +29,12 @@ export type AlertRecord = {
     recentChanges?: string;
     feed?: {
       feedChange?: string;
-      feedType?: string;
+      feedType?: string[] | string;
       feedOrigin?: string;
     } | null;
     pharma?: {
       drugExposure?: string;
-      drugCategory?: string;
+      drugCategory?: string[] | string;
       drugInterval?: string;
     } | null;
     environment?: {
