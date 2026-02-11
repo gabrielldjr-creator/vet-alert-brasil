@@ -9,10 +9,7 @@ import { Card } from "../Card";
 import { ensurePilotAuth } from "../../lib/auth";
 import { auth, db } from "../../lib/firebase";
 import { VetPanelFilters } from "./VetPanelFilters";
-import { VetPanelSummary } from "./VetPanelSummary";
-import { VetPanelFeed } from "./VetPanelFeed";
 import { AlertRecord, VetPanelFiltersState } from "./types";
-import { mapAlertGroupLabel } from "./alertLabeling";
 
 const PILOT_MODE =
   process.env.NEXT_PUBLIC_PILOT_MODE === "true" || process.env.NEXT_PUBLIC_PILOT_MODE === "1";
@@ -27,15 +24,6 @@ const speciesOptions = [
   "Outros animais de produção",
 ];
 
-const alertGroupOptions = [
-  "Síndromes Clínicas",
-  "Registros Populacionais",
-  "Ambientais / Toxicológicos",
-  "Bem-estar / Manejo",
-  "Sinais clínicos atípicos (interface ampliada)",
-  "Outro",
-];
-
 const severityOptions = ["Atenção", "Preocupante", "Urgente"];
 
 const timeWindowOptions = [
@@ -43,19 +31,6 @@ const timeWindowOptions = [
   { value: "7d", label: "Últimos 7 dias" },
   { value: "30d", label: "Últimos 30 dias" },
 ];
-
-const timeWindowLabel = (timeWindow: VetPanelFiltersState["timeWindow"]) => {
-  switch (timeWindow) {
-    case "24h":
-      return "nas últimas 24h";
-    case "7d":
-      return "nos últimos 7 dias";
-    case "30d":
-      return "nos últimos 30 dias";
-    default:
-      return "no período selecionado";
-  }
-};
 
 const getAlertTimestamp = (alert: AlertRecord) => {
   return alert.createdAt?.toDate?.() ?? alert.timestamp?.toDate?.();
@@ -65,15 +40,62 @@ const normalizeText = (value?: string) => value?.trim().toLowerCase() ?? "";
 
 const normalizeState = (value?: string) => value?.trim().toUpperCase() ?? "";
 
-const getScopeLabel = (scope: VetPanelFiltersState["stateScope"]) => {
-  if (scope === "SC") {
-    return "no estado de Santa Catarina (SC)";
-  }
-  if (scope === "MT") {
-    return "no estado de Mato Grosso (MT)";
-  }
-  return "em todo o Brasil";
+const includesValue = (value: string[] | string | undefined, expected: string) => {
+  if (!value) return false;
+  if (Array.isArray(value)) return value.some((item) => normalizeText(item) === normalizeText(expected));
+  return normalizeText(value) === normalizeText(expected);
 };
+
+const asArray = (value: string[] | string | undefined) => {
+  if (!value) return [] as string[];
+  return Array.isArray(value) ? value : [value];
+};
+
+const clamp = (value: number) => Math.max(0, Math.min(100, value));
+
+const formatPercent = (value: number) => `${Math.round(clamp(value))}%`;
+
+const getScopeLabel = (scope: VetPanelFiltersState["stateScope"]) => {
+  if (scope === "SC") return "Santa Catarina (SC)";
+  if (scope === "MT") return "Mato Grosso (MT)";
+  return "Brasil";
+};
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div className="h-2.5 rounded-full bg-slate-100">
+      <div className="h-full rounded-full bg-slate-500 transition-all" style={{ width: `${clamp(value)}%` }} />
+    </div>
+  );
+}
+
+function Donut({ value }: { value: number }) {
+  const safe = clamp(value);
+  return (
+    <div
+      className="grid h-28 w-28 place-items-center rounded-full"
+      style={{
+        background: `conic-gradient(rgb(71 85 105) ${safe * 3.6}deg, rgb(226 232 240) 0deg)`,
+      }}
+    >
+      <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-lg font-semibold text-slate-800">
+        {formatPercent(safe)}
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return (
+    <Card className="space-y-4 p-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <p className="mt-1 text-sm text-slate-600">{description}</p>
+      </div>
+      {children}
+    </Card>
+  );
+}
 
 export function DashboardVetPanel() {
   const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
@@ -90,13 +112,13 @@ export function DashboardVetPanel() {
   });
   const searchParams = useSearchParams();
   const registrationFlag = searchParams.get("registrado") === "1";
+  const [referenceNow, setReferenceNow] = useState(() => new Date());
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       const allowAccess = Boolean(user) || PILOT_MODE;
 
       if (PILOT_MODE) {
-        // PILOT MODE BYPASS
         setStatus("ready");
       }
 
@@ -185,9 +207,12 @@ export function DashboardVetPanel() {
     };
   }, [status]);
 
-  const scopedAlerts = useMemo(() => {
-    const now = Date.now();
-    const cutoff = new Date(now);
+  useEffect(() => {
+    setReferenceNow(new Date());
+  }, [filters.timeWindow]);
+
+  const filteredAlerts = useMemo(() => {
+    const cutoff = new Date(referenceNow);
     if (filters.timeWindow === "24h") {
       cutoff.setHours(cutoff.getHours() - 24);
     } else if (filters.timeWindow === "7d") {
@@ -206,93 +231,181 @@ export function DashboardVetPanel() {
         const alertState = normalizeState(alert.state);
         if (!alertState || !scopeStates.has(alertState)) return false;
       }
-      return true;
-    });
-  }, [alerts, filters.timeWindow, filters.stateScope]);
-
-  const municipalityOptions = useMemo(() => {
-    const entries = new Map<string, string>();
-    alerts.forEach((alert) => {
-      const name = alert.municipality || alert.cityName || alert.city;
-      if (!name) return;
-      const key = normalizeText(name);
-      if (!entries.has(key)) {
-        entries.set(key, name);
-      }
-    });
-    return Array.from(entries.values()).sort((a, b) => a.localeCompare(b));
-  }, [alerts]);
-
-  const regionIBGEOptions = useMemo(() => {
-    const entries = new Map<string, string>();
-    alerts.forEach((alert) => {
-      const group = alert.regionIBGE;
-      if (!group) return;
-      const key = normalizeText(group);
-      if (!entries.has(key)) {
-        entries.set(key, group);
-      }
-    });
-    return Array.from(entries.values()).sort((a, b) => a.localeCompare(b));
-  }, [alerts]);
-
-  const filteredAlerts = useMemo(() => {
-    return scopedAlerts.filter((alert) => {
       if (filters.species && normalizeText(alert.species) !== normalizeText(filters.species)) return false;
-      if (
-        filters.alertGroup &&
-        normalizeText(mapAlertGroupLabel(alert.alertGroup)) !== normalizeText(mapAlertGroupLabel(filters.alertGroup))
-      ) {
-        return false;
-      }
       if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
-      if (filters.regionIBGE !== "all" && normalizeText(alert.regionIBGE) !== normalizeText(filters.regionIBGE)) {
-        return false;
-      }
-      if (filters.municipality !== "all") {
-        const municipalityLabel = normalizeText(alert.municipality || alert.cityName || alert.city);
-        if (municipalityLabel !== normalizeText(filters.municipality)) return false;
-      }
       return true;
     });
-  }, [filters, scopedAlerts]);
+  }, [alerts, filters, referenceNow]);
 
-  const summaryLines = useMemo(() => {
-    if (filteredAlerts.length === 0) return [];
+  const alertsWithoutTimeLimit = useMemo(() => {
+    const scopeStates = filters.stateScope === "all" ? null : new Set([normalizeState(filters.stateScope)]);
+    return alerts.filter((alert) => {
+      if (scopeStates) {
+        const alertState = normalizeState(alert.state);
+        if (!alertState || !scopeStates.has(alertState)) return false;
+      }
+      if (filters.species && normalizeText(alert.species) !== normalizeText(filters.species)) return false;
+      if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
+      return true;
+    });
+  }, [alerts, filters.severity, filters.species, filters.stateScope]);
 
-    const groupCounts = filteredAlerts.reduce<Record<string, number>>((acc, alert) => {
-      const key = mapAlertGroupLabel(alert.alertGroup) || "Sem grupo";
-      acc[key] = (acc[key] || 0) + 1;
+  const dashboardData = useMemo(() => {
+    const source = filteredAlerts;
+    const total = source.length || 1;
+
+    const opi =
+      (source.reduce((acc, alert) => {
+        const whenCalled = alert.arrival_context?.when_called;
+        const factors = alert.arrival_context?.external_factors ?? [];
+        const situation = alert.arrival_context?.situation_found;
+
+        const lateAttendance = whenCalled === "late" || whenCalled === "very_late" || factors.includes("delayed_call");
+        const socioeconomicPressure = factors.includes("financial_limitation");
+        const protocolDeviation = factors.includes("recommendation_not_followed") || factors.includes("previous_management");
+        const delayedIntervention = situation === "critical" || whenCalled === "very_late";
+
+        const score = [lateAttendance, socioeconomicPressure, protocolDeviation, delayedIntervention].filter(Boolean).length / 4;
+        return acc + score;
+      }, 0) /
+        total) *
+      100;
+
+    const poiFromWindow = (days: number) => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      const scoped = alertsWithoutTimeLimit.filter((alert) => {
+        const createdAt = getAlertTimestamp(alert);
+        return createdAt ? createdAt >= cutoff : true;
+      });
+      if (scoped.length === 0) return 0;
+      const matched = scoped.filter((alert) => {
+        const factors = alert.arrival_context?.external_factors ?? [];
+        const feedChange = alert.context?.feed?.feedChange;
+        const drugCategory = alert.context?.pharma?.drugCategory;
+        const drugInterval = alert.context?.pharma?.drugInterval;
+
+        const preventiveProtocolNotFollowed = factors.includes("recommendation_not_followed");
+        const vaccinationTimingDeviation = includesValue(drugCategory, "Vacina") && Boolean(drugInterval);
+        const feedChanged = Boolean(feedChange && normalizeText(feedChange) !== normalizeText("Nenhuma mudança"));
+        const recurrentDrugClassUsageReported = Boolean(alert.context?.pharma?.drugExposure === "Sim" || drugInterval === "< 24h" || drugInterval === "1–3 dias");
+
+        return (
+          preventiveProtocolNotFollowed ||
+          vaccinationTimingDeviation ||
+          feedChanged ||
+          recurrentDrugClassUsageReported
+        );
+      }).length;
+
+      return (matched / scoped.length) * 100;
+    };
+
+    const poi30 = poiFromWindow(30);
+    const poi60 = poiFromWindow(60);
+    const poi90 = poiFromWindow(90);
+
+    const classFrequency = source.reduce<Record<string, number>>((acc, alert) => {
+      asArray(alert.context?.pharma?.drugCategory).forEach((category) => {
+        const normalized = category.trim();
+        if (!normalized) return;
+        acc[normalized] = (acc[normalized] || 0) + 1;
+      });
       return acc;
     }, {});
 
-    const speciesCounts = filteredAlerts.reduce<Record<string, number>>((acc, alert) => {
-      const key = alert.species || "Espécie não informada";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
+    const topClassEntry = Object.entries(classFrequency).sort((a, b) => b[1] - a[1])[0] ?? ["Sem classificação", 0];
+    const topClassPercentage = total > 0 ? (topClassEntry[1] / total) * 100 : 0;
 
-    const topGroup = Object.entries(groupCounts).sort((a, b) => b[1] - a[1])[0];
-    const topSpecies = Object.entries(speciesCounts).sort((a, b) => b[1] - a[1])[0];
-    const urgentCount = filteredAlerts.filter((alert) => alert.severity === "Urgente").length;
-    const scopeLabel = getScopeLabel(filters.stateScope);
-    const windowLabel = timeWindowLabel(filters.timeWindow);
+    const classTrend = (() => {
+      const topClass = topClassEntry[0];
+      if (topClass === "Sem classificação") return 0;
+      const now = new Date();
+      const cutoff30 = new Date(now);
+      cutoff30.setDate(cutoff30.getDate() - 30);
+      const cutoff90 = new Date(now);
+      cutoff90.setDate(cutoff90.getDate() - 90);
 
-    const lines = [
-      `${filteredAlerts.length} registros descritivos ${windowLabel} ${scopeLabel}.`,
-      topGroup ? `Grupo mais frequente: ${topGroup[0]} (${topGroup[1]}).` : null,
-      topSpecies ? `Espécies mais citadas: ${topSpecies[0]} (${topSpecies[1]}).` : null,
-      urgentCount ? `${urgentCount} registros marcados como urgentes ${windowLabel}.` : null,
-    ].filter((line): line is string => Boolean(line));
+      const recent = alertsWithoutTimeLimit.filter((alert) => {
+        const timestamp = getAlertTimestamp(alert);
+        return timestamp ? timestamp >= cutoff30 : false;
+      });
+      const baseline = alertsWithoutTimeLimit.filter((alert) => {
+        const timestamp = getAlertTimestamp(alert);
+        return timestamp ? timestamp >= cutoff90 : false;
+      });
 
-    return lines.slice(0, 3);
-  }, [filteredAlerts, filters.stateScope, filters.timeWindow]);
+      const recentRate = recent.length
+        ? (recent.filter((alert) => includesValue(alert.context?.pharma?.drugCategory, topClass)).length / recent.length) * 100
+        : 0;
+      const baseRate = baseline.length
+        ? (baseline.filter((alert) => includesValue(alert.context?.pharma?.drugCategory, topClass)).length / baseline.length) * 100
+        : 0;
+
+      return recentRate - baseRate;
+    })();
+
+    const complexityScore =
+      (source.reduce((acc, alert) => {
+        const hasStressFactor = (alert.arrival_context?.external_factors ?? []).includes("financial_limitation");
+        const hasTreatmentFactor = alert.context?.pharma?.drugExposure === "Sim" || asArray(alert.context?.pharma?.drugCategory).length > 0;
+        const hasLateCall = ["late", "very_late"].includes(alert.arrival_context?.when_called ?? "");
+        const hasEnvironment = (alert.context?.environment?.environmentSignals ?? []).length > 0;
+
+        const multiFactorCase = [hasStressFactor, hasTreatmentFactor, hasLateCall, hasEnvironment].filter(Boolean).length >= 3;
+        const combinedCondition = hasStressFactor && hasTreatmentFactor && hasLateCall;
+
+        const score = [multiFactorCase, combinedCondition, hasEnvironment].filter(Boolean).length / 3;
+        return acc + score;
+      }, 0) /
+        total) *
+      100;
+
+    const complexityTier = complexityScore < 34 ? "Baixo" : complexityScore < 67 ? "Moderado" : "Elevado";
+
+    const contextualRisk = {
+      transporteRecente:
+        (source.filter((alert) => normalizeText(alert.alertType).includes("transporte") || normalizeText(alert.context?.recentChanges).includes("72h")).length /
+          total) *
+        100,
+      mudancaAlimentar:
+        (source.filter((alert) => {
+          const feedChange = alert.context?.feed?.feedChange;
+          return Boolean(feedChange && normalizeText(feedChange) !== normalizeText("Nenhuma mudança"));
+        }).length /
+          total) *
+        100,
+      altaCargaParasitaria:
+        (source.filter((alert) => {
+          const obs = normalizeText(alert.context?.parasiteObservation);
+          return obs.includes("alta carga") || normalizeText(alert.alertType).includes("parasit");
+        }).length /
+          total) *
+        100,
+      pressaoEconomica:
+        (source.filter((alert) => (alert.arrival_context?.external_factors ?? []).includes("financial_limitation")).length / total) * 100,
+    };
+
+    return {
+      opi,
+      poi30,
+      poi60,
+      poi90,
+      topClass: topClassEntry[0],
+      topClassPercentage,
+      classTrend,
+      complexityScore,
+      complexityTier,
+      contextualRisk,
+      sampleSize: source.length,
+    };
+  }, [alertsWithoutTimeLimit, filteredAlerts]);
 
   if (status === "checking") {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Verificando acesso</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-700">Verificando acesso</p>
           <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
         </Card>
       </div>
@@ -303,7 +416,7 @@ export function DashboardVetPanel() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-amber-700">Acesso restrito</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-700">Acesso restrito</p>
           <p className="text-base text-slate-700">
             Este painel é reservado a médicos-veterinários convidados. Verifique seu link de acesso ou tente novamente.
           </p>
@@ -314,57 +427,149 @@ export function DashboardVetPanel() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
-      <Card className="border-emerald-100 bg-emerald-50/70 p-6 text-sm text-emerald-900">
+      <Card className="border-slate-200 bg-slate-50 p-6 text-sm text-slate-800">
         <p>
-          Este painel apresenta registros descritivos e anônimos do campo veterinário.
+          Este painel apresenta indicadores operacionais agregados e despersonalizados.
           <br />
-          Não constitui notificação oficial, não confirma diagnósticos e não gera ações sanitárias automáticas.
+          Não constitui vigilância sanitária, notificação oficial ou confirmação diagnóstica.
           <br />
-          Em situações de suspeita de doenças de notificação obrigatória, o fluxo oficial deve ser seguido conforme legislação
-          vigente.
+          Para suspeitas de doenças de notificação obrigatória, utilize exclusivamente os canais oficiais.
         </p>
       </Card>
-      <section className="flex flex-col gap-3">
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Painel situacional autenticado</p>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-slate-900">Registros clínicos descritivos da sua região</h1>
-            <p className="max-w-3xl text-base text-slate-700">
-              Visualize registros enviados por veterinários com informações descritivas, sem diagnósticos ou dados sensíveis. Ajuste
-              o escopo regional, a janela de tempo e filtros rápidos para identificar padrões de atenção.
-            </p>
-          </div>
-          <Button
-            href="/alerta/novo"
-            className="bg-amber-600 text-white shadow-md shadow-amber-200 hover:bg-amber-700 focus-visible:outline-amber-600"
-          >
-            Registrar novo sinal
-          </Button>
+
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Painel operacional veterinário</p>
+          <h1 className="text-3xl font-semibold text-slate-900">Inteligência de gestão clínica regional</h1>
+          <p className="max-w-3xl text-base text-slate-600">
+            Visão agregada para preparo de rotina, organização de condutas e leitura de contexto de manejo no estado selecionado.
+          </p>
+          <p className="text-xs text-slate-500">Escopo ativo: {getScopeLabel(filters.stateScope)}</p>
         </div>
-        {registrationFlag && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
-            Registro salvo com sucesso. O painel foi atualizado automaticamente.
-          </div>
-        )}
+        <Button href="/alerta/novo" className="bg-slate-700 text-white hover:bg-slate-800 focus-visible:outline-slate-700">
+          Registrar novo sinal
+        </Button>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.05fr,0.95fr]">
-        <VetPanelSummary lines={summaryLines} />
+      {registrationFlag && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-800">
+          Registro salvo com sucesso. Os indicadores foram atualizados automaticamente.
+        </div>
+      )}
+
+      <section className="grid gap-6 lg:grid-cols-[1fr,1fr]">
+        <MetricCard
+          title="Índice de Pressão Operacional Regional"
+          description="Composição percentual baseada em atendimento tardio, pressão econômica, desvio de protocolo e intervenção tardia."
+        >
+          <div className="flex items-center justify-between gap-4">
+            <Donut value={dashboardData.opi} />
+            <div className="w-full space-y-3 text-sm text-slate-600">
+              <p>Leitura consolidada para priorização de preparo assistencial em campo.</p>
+              <ProgressBar value={dashboardData.opi} />
+            </div>
+          </div>
+        </MetricCard>
+
+        <MetricCard
+          title="Indicador de Oportunidades Preventivas"
+          description="Percentual de oportunidades associadas a conduta preventiva, calendário, alimentação e recorrência terapêutica."
+        >
+          <div className="space-y-3">
+            {[
+              { label: "30 dias", value: dashboardData.poi30 },
+              { label: "60 dias", value: dashboardData.poi60 },
+              { label: "90 dias", value: dashboardData.poi90 },
+            ].map((item) => (
+              <div key={item.label} className="space-y-1">
+                <div className="flex items-center justify-between text-sm text-slate-700">
+                  <span>{item.label}</span>
+                  <span className="font-semibold">{formatPercent(item.value)}</span>
+                </div>
+                <ProgressBar value={item.value} />
+              </div>
+            ))}
+          </div>
+        </MetricCard>
+
+        <MetricCard
+          title="Padrões Terapêuticos Agregados"
+          description="Sinalização consolidada por classe terapêutica, sem associação a condição específica."
+        >
+          <div className="space-y-3 text-sm">
+            <div className="rounded-xl bg-slate-50 p-3 text-slate-700">
+              Classe terapêutica mais frequente: <span className="font-semibold text-slate-900">{dashboardData.topClass}</span> ({formatPercent(dashboardData.topClassPercentage)})
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3 text-slate-700">
+              Tendência de recorrência: <span className="font-semibold text-slate-900">{dashboardData.classTrend >= 0 ? "↑" : "↓"} {formatPercent(Math.abs(dashboardData.classTrend))}</span> em relação à base de 90 dias.
+            </div>
+          </div>
+        </MetricCard>
+
+        <MetricCard
+          title="Nível Médio de Complexidade dos Atendimentos"
+          description="Composição baseada em multifatores de manejo, contexto de intervenção e variáveis ambientais."
+        >
+          <div className="space-y-3">
+            <div className="flex items-end justify-between">
+              <p className="text-sm text-slate-600">Faixa atual</p>
+              <p className="text-2xl font-semibold text-slate-900">{dashboardData.complexityTier}</p>
+            </div>
+            <ProgressBar value={dashboardData.complexityScore} />
+            <div className="grid grid-cols-3 text-xs text-slate-500">
+              <span>Baixo</span>
+              <span className="text-center">Moderado</span>
+              <span className="text-right">Elevado</span>
+            </div>
+          </div>
+        </MetricCard>
+      </section>
+
+      <section>
+        <Card className="space-y-5 p-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contexto de Manejo e Ambiente</p>
+            <p className="text-sm text-slate-600">Fatores contextuais agregados para planejamento de rotina clínica.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Transporte recente", value: dashboardData.contextualRisk.transporteRecente },
+              { label: "Mudança alimentar", value: dashboardData.contextualRisk.mudancaAlimentar },
+              { label: "Alta carga parasitária relatada", value: dashboardData.contextualRisk.altaCargaParasitaria },
+              { label: "Pressão econômica relatada", value: dashboardData.contextualRisk.pressaoEconomica },
+            ].map((item) => (
+              <div key={item.label} className="space-y-2 rounded-xl border border-slate-200 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
+                <p className="text-2xl font-semibold text-slate-900">{formatPercent(item.value)}</p>
+                <ProgressBar value={item.value} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
         <Card className="p-6">
           <VetPanelFilters
             filters={filters}
             onChange={setFilters}
             speciesOptions={speciesOptions}
-            alertGroupOptions={alertGroupOptions}
-            municipalityOptions={municipalityOptions}
-            regionIBGEOptions={regionIBGEOptions}
+            alertGroupOptions={[]}
+            municipalityOptions={[]}
+            regionIBGEOptions={[]}
             severityOptions={severityOptions}
             timeWindowOptions={timeWindowOptions}
           />
         </Card>
+        <Card className="space-y-3 p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cobertura do painel</p>
+          <p className="text-sm text-slate-700">Indicadores calculados no escopo ativo, sempre em formato agregado e despersonalizado.</p>
+          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+            Registros considerados na agregação atual: <span className="font-semibold">{dashboardData.sampleSize}</span>
+          </div>
+          {profile?.state && <p className="text-xs text-slate-500">Perfil autenticado com base principal em {profile.state}.</p>}
+        </Card>
       </section>
-
-      <VetPanelFeed alerts={filteredAlerts} totalAlerts={alerts.length} />
     </div>
   );
 }

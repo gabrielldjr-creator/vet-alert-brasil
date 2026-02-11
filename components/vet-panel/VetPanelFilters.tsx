@@ -1,4 +1,3 @@
-import { Select } from "../Select";
 import { VetPanelFiltersState } from "./types";
 
 type FilterOption = {
@@ -37,7 +36,7 @@ const Chip = ({
     onClick={onClick}
     className={[
       "rounded-full border px-4 py-2 text-sm font-semibold transition",
-      active ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-slate-200 text-slate-700",
+      active ? "border-slate-500 bg-slate-100 text-slate-900" : "border-slate-200 text-slate-700",
     ].join(" ")}
   >
     {label}
@@ -48,9 +47,6 @@ export function VetPanelFilters({
   filters,
   onChange,
   speciesOptions,
-  alertGroupOptions,
-  municipalityOptions,
-  regionIBGEOptions,
   severityOptions,
   timeWindowOptions,
 }: VetPanelFiltersProps) {
@@ -61,12 +57,12 @@ export function VetPanelFilters({
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Filtros rápidos</p>
-        <p className="text-sm text-slate-600">Refine por escopo, espécie, nível de atenção e janela de tempo.</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">Filtros de gestão</p>
+        <p className="text-sm text-slate-600">Ajuste escopo, espécie, prioridade de atendimento e período de análise.</p>
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Escopo regional</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Escopo estadual</p>
         <div className="flex flex-wrap gap-2">
           {scopeOptions.map((option) => (
             <Chip
@@ -82,11 +78,7 @@ export function VetPanelFilters({
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Espécie</p>
         <div className="flex flex-wrap gap-2">
-          <Chip
-            label="Todas"
-            active={filters.species === ""}
-            onClick={() => updateFilter({ species: "" })}
-          />
+          <Chip label="Todas" active={filters.species === ""} onClick={() => updateFilter({ species: "" })} />
           {speciesOptions.map((option) => (
             <Chip
               key={option}
@@ -99,70 +91,9 @@ export function VetPanelFilters({
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Grupo de registro</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Prioridade de atendimento</p>
         <div className="flex flex-wrap gap-2">
-          <Chip
-            label="Todos"
-            active={filters.alertGroup === ""}
-            onClick={() => updateFilter({ alertGroup: "" })}
-          />
-          {alertGroupOptions.map((option) => (
-            <Chip
-              key={option}
-              label={option}
-              active={filters.alertGroup === option}
-              onClick={() => updateFilter({ alertGroup: option })}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Município</p>
-        <Select
-          label="Município"
-          name="municipio"
-          value={filters.municipality}
-          onChange={(event) => updateFilter({ municipality: event.target.value })}
-          helper="Filtra por município selecionado."
-          disabled={municipalityOptions.length === 0}
-        >
-          <option value="all">Todos</option>
-          {municipalityOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Região (padrão regional)</p>
-        <Select
-          label="Região (padrão regional)"
-          name="regiao-regional"
-          value={filters.regionIBGE}
-          onChange={(event) => updateFilter({ regionIBGE: event.target.value })}
-          helper="Usa a região do IBGE para agrupar municípios."
-          disabled={regionIBGEOptions.length === 0}
-        >
-          <option value="all">Todas</option>
-          {regionIBGEOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nível de atenção</p>
-        <div className="flex flex-wrap gap-2">
-          <Chip
-            label="Todas"
-            active={filters.severity === ""}
-            onClick={() => updateFilter({ severity: "" })}
-          />
+          <Chip label="Todas" active={filters.severity === ""} onClick={() => updateFilter({ severity: "" })} />
           {severityOptions.map((option) => (
             <Chip
               key={option}
