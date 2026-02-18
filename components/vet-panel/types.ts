@@ -54,5 +54,5 @@ export type VetPanelFiltersState = {
   severity: string;
   regionIBGE: "all" | string;
   municipality: "all" | string;
-  timeWindow: "24h" | "7d" | "30d";
+  timeWindow: "7d" | "30d" | "90d";
 };

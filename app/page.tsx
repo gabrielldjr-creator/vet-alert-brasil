@@ -2,9 +2,9 @@ import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 
 export const metadata = {
-  title: "Vet Alert Brasil | Monitoramento clínico regional",
+  title: "Vet Alert Brasil | Painel situacional clínico",
   description:
-    "Monitoramento clínico regional com registros anonimizados e agregados por veterinários.",
+    "Análise agregada e observacional de registros clínicos anonimizados por veterinários.",
 };
 
 export default function Home() {
@@ -12,23 +12,32 @@ export default function Home() {
     <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 py-12 sm:px-6 lg:gap-12 lg:px-10 lg:py-16">
       <section className="space-y-4">
         <h1 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-          Monitoramento clínico regional — visão compartilhada entre veterinários.
+          Painel situacional clínico — visão compartilhada entre veterinários.
         </h1>
         <p className="max-w-2xl text-base text-slate-700 sm:text-lg">
-          Sinais clínicos descritivos registrados de forma anônima por veterinários da sua região, atualizados em tempo real.
+          Sinais clínicos descritivos registrados de forma anônima por veterinários da sua região, no período selecionado.
         </p>
         <p className="text-sm uppercase tracking-wide text-slate-500">
-          Camada pré-diagnóstica de monitoramento descritivo agregado.
+          Camada pré-diagnóstica de análise agregada descritiva.
         </p>
         <div className="space-y-4">
           <h1 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
             Leitura situacional regional, construída pelo campo.
           </h1>
           <p className="max-w-2xl text-lg text-slate-700">
-            Registre sinais observados no consultório ou na fazenda e acompanhe padrões regionais em tempo real. Registros 100%
+            Registre sinais observados no consultório ou na fazenda e acompanhe padrões agregados no período selecionado. Registros 100%
             anônimos e sem orientação clínica. Gratuito para veterinários.
           </p>
         </div>
+        <Card className="border-slate-200 bg-slate-50 p-4 text-sm text-slate-800">
+          <p>
+            Esta plataforma fornece análise agregada e observacional de registros clínicos.
+            <br />
+            Não substitui notificação oficial obrigatória, não exerce função de vigilância sanitária e não confirma diagnósticos.
+            <br />
+            Registros de suspeita de doenças de notificação obrigatória devem seguir o fluxo oficial previsto em lei.
+          </p>
+        </Card>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button href="/alerta/novo" className="w-full sm:w-auto px-6 py-3 text-base">
             Registrar sinal
@@ -55,8 +64,7 @@ export default function Home() {
         <h2 className="text-lg font-semibold text-slate-900">Onde o Vet Alert atua</h2>
         <Card className="space-y-3 border-slate-200 p-6">
           <p className="text-sm text-slate-700">
-            O Vet Alert Brasil opera exclusivamente no intervalo entre a suspeita clínica individual e a confirmação diagnóstica
-            formal.
+            O Vet Alert Brasil opera exclusivamente no intervalo entre o registro clínico individual e a confirmação diagnóstica formal.
           </p>
           <p className="text-sm font-semibold text-slate-900">Não substitui certeza. Amplia percepção.</p>
         </Card>

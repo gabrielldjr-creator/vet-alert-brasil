@@ -66,7 +66,7 @@ const alertCategories = [
       "Falta de água",
       "Superlotação",
       "Colapso relacionado a transporte ou esforço",
-      "Suspeita de maus-tratos ou negligência",
+      "Indicadores de Integridade Física Observacional",
       "Lesão oral associada a equipamento de condução",
       "Lesão em região costal associada a pressão mecânica",
       "Lesão cervical associada a contenção",
@@ -656,12 +656,11 @@ export default function AlertFormClient() {
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
         <Card className="border-emerald-100 bg-emerald-50/70 p-6 text-sm text-emerald-900">
           <p>
-            Este painel apresenta registros descritivos e anônimos do campo veterinário.
+            Esta plataforma fornece análise agregada e observacional de registros clínicos.
             <br />
-            Não constitui notificação oficial, não confirma diagnósticos e não gera ações sanitárias automáticas.
+            Não substitui notificação oficial obrigatória, não exerce função de vigilância sanitária e não confirma diagnósticos.
             <br />
-            Em situações de suspeita de doenças de notificação obrigatória, o fluxo oficial deve ser seguido conforme legislação
-            vigente.
+            Registros de suspeita de doenças de notificação obrigatória devem seguir o fluxo oficial previsto em lei.
           </p>
         </Card>
         <div className="space-y-1">
@@ -831,8 +830,7 @@ export default function AlertFormClient() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opções da categoria</p>
                 {alertGroup === "Bem-estar / Manejo" ? (
                   <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                    Registros observacionais relacionados à integridade física do animal, sem identificação de pessoas ou
-                    responsabilização individual.
+                    Registros observacionais relacionados à integridade física do animal, sem identificação de pessoas ou atribuição individual.
                   </p>
                 ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -1383,7 +1381,7 @@ export default function AlertFormClient() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <p className="text-xs text-slate-600 sm:col-span-2">
-                    O município é a referência geográfica principal. A região do IBGE é apenas informativa.
+                    O município apoia o registro interno. A visualização pública utiliza recortes agregados estaduais e regionais.
                   </p>
                   <div className="space-y-2">
                     <Input
@@ -1440,19 +1438,19 @@ export default function AlertFormClient() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-900">
-                    Observação rápida (suspeita clínica) — opcional
+                    Observação rápida (registro clínico) — opcional
                   </p>
                   <span className="text-xs text-slate-500">{notes.length}/250</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Textarea
                     name="notes"
-                    placeholder="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
+                    placeholder="Registro clínico resumido (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
                     value={notes}
                     onChange={(event) => setNotes(event.target.value.slice(0, 250))}
                     rows={4}
                     maxLength={250}
-                    helper="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
+                    helper="Registro clínico resumido (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
                     containerClassName="flex-1"
                   />
                   <button
