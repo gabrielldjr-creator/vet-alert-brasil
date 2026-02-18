@@ -66,7 +66,17 @@ const alertCategories = [
       "Falta de água",
       "Superlotação",
       "Colapso relacionado a transporte ou esforço",
-      "Suspeita de maus-tratos ou negligência",
+      "Indicadores de Integridade Física Observacional",
+      "Lesão oral associada a equipamento de condução",
+      "Lesão em região costal associada a pressão mecânica",
+      "Lesão cervical associada a contenção",
+      "Ferida cutânea associada a fricção de equipamento",
+      "Sensibilidade exacerbada em região de contato de instrumentos",
+      "Hematoma em área de contato de pressão",
+      "Rigidez muscular associada a sobrecarga mecânica",
+      "Alteração comportamental sob estímulo mecânico",
+      "Desconforto locomotor associado a ajuste de equipamento",
+      "Outro indicador físico observacional (campo estruturado limitado a 100 caracteres)",
     ],
   },
   {
@@ -173,6 +183,8 @@ const detailOptions: Record<string, string[]> = {
 };
 
 const parasiteAlertType = "Quadro parasitário / falha de controle parasitário";
+const physicalIntegrityOtherAlertType =
+  "Outro indicador físico observacional (campo estruturado limitado a 100 caracteres)";
 const parasiteObservationOptions = [
   "Presença de carrapatos",
   "Alta carga de ectoparasitas",
@@ -309,6 +321,7 @@ export default function AlertFormClient() {
   const [arrivalOptionalNote, setArrivalOptionalNote] = useState("");
   const [parasiteObservationOption, setParasiteObservationOption] = useState("");
   const [parasiteObservationNote, setParasiteObservationNote] = useState("");
+  const [physicalIntegrityObservationNote, setPhysicalIntegrityObservationNote] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -433,6 +446,7 @@ export default function AlertFormClient() {
     setEnvironmentSignals([]);
     setParasiteObservationOption("");
     setParasiteObservationNote("");
+    setPhysicalIntegrityObservationNote("");
     setErrors([]);
   };
 
@@ -451,6 +465,11 @@ export default function AlertFormClient() {
     if (parasiteObservationOption) return parasiteObservationOption;
     return trimmed;
   }, [alertType, parasiteObservationNote, parasiteObservationOption]);
+
+  const physicalIntegrityObservationValue = useMemo(() => {
+    if (alertType !== physicalIntegrityOtherAlertType) return "";
+    return physicalIntegrityObservationNote.trim().slice(0, 100);
+  }, [alertType, physicalIntegrityObservationNote]);
 
   const validateCurrentStep = () => {
     const missing: string[] = [];
@@ -505,6 +524,9 @@ export default function AlertFormClient() {
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
       const parasiteObservation = parasiteObservationValue ? parasiteObservationValue : null;
+      const physicalIntegrityObservation = physicalIntegrityObservationValue
+        ? physicalIntegrityObservationValue
+        : null;
 
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
@@ -552,6 +574,7 @@ export default function AlertFormClient() {
           herdCountLabel: herdCount,
           country,
           ...(parasiteObservation ? { parasiteObservation } : {}),
+          ...(physicalIntegrityObservation ? { physicalIntegrityObservation } : {}),
         },
         source: "pilot",
       });
@@ -633,12 +656,11 @@ export default function AlertFormClient() {
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
         <Card className="border-emerald-100 bg-emerald-50/70 p-6 text-sm text-emerald-900">
           <p>
-            Este painel apresenta registros descritivos e anônimos do campo veterinário.
+            Esta plataforma fornece análise agregada e observacional de registros clínicos.
             <br />
-            Não constitui notificação oficial, não confirma diagnósticos e não gera ações sanitárias automáticas.
+            Não substitui notificação oficial obrigatória, não exerce função de vigilância sanitária e não confirma diagnósticos.
             <br />
-            Em situações de suspeita de doenças de notificação obrigatória, o fluxo oficial deve ser seguido conforme legislação
-            vigente.
+            Registros de suspeita de doenças de notificação obrigatória devem seguir o fluxo oficial previsto em lei.
           </p>
         </Card>
         <div className="space-y-1">
@@ -806,6 +828,11 @@ export default function AlertFormClient() {
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opções da categoria</p>
+                {alertGroup === "Bem-estar / Manejo" ? (
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                    Registros observacionais relacionados à integridade física do animal, sem identificação de pessoas ou atribuição individual.
+                  </p>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {alertCategories
                     .find((group) => group.group === alertGroup)
@@ -899,6 +926,17 @@ export default function AlertFormClient() {
                       helper="Descrição breve. Se a lista não atender, escreva em texto livre."
                     />
                   </div>
+                )}
+
+                {alertType === physicalIntegrityOtherAlertType && (
+                  <Input
+                    name="physicalIntegrityObservationNote"
+                    label="Indicador físico observacional (opcional)"
+                    value={physicalIntegrityObservationNote}
+                    onChange={(event) => setPhysicalIntegrityObservationNote(event.target.value.slice(0, 100))}
+                    maxLength={100}
+                    helper="Descrição curta e observacional, sem identificação de pessoas."
+                  />
                 )}
               </div>
             </div>
@@ -1343,7 +1381,7 @@ export default function AlertFormClient() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <p className="text-xs text-slate-600 sm:col-span-2">
-                    O município é a referência geográfica principal. A região do IBGE é apenas informativa.
+                    O município apoia o registro interno. A visualização pública utiliza recortes agregados estaduais e regionais.
                   </p>
                   <div className="space-y-2">
                     <Input
@@ -1400,19 +1438,19 @@ export default function AlertFormClient() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-900">
-                    Observação rápida (suspeita clínica) — opcional
+                    Observação rápida (registro clínico) — opcional
                   </p>
                   <span className="text-xs text-slate-500">{notes.length}/250</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Textarea
                     name="notes"
-                    placeholder="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
+                    placeholder="Registro clínico resumido (ex: “neurológico agudo”, “actinomicose”) + contexto breve."
                     value={notes}
                     onChange={(event) => setNotes(event.target.value.slice(0, 250))}
                     rows={4}
                     maxLength={250}
-                    helper="Suspeita clínica resumida (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
+                    helper="Registro clínico resumido (ex: “neurológico agudo”, “actinomicose”) + contexto breve. Máx. 250 caracteres."
                     containerClassName="flex-1"
                   />
                   <button

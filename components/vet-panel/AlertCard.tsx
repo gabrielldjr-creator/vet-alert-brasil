@@ -13,16 +13,8 @@ const severityPillStyles: Record<string, string> = {
   Atenção: "bg-slate-100 text-slate-700",
 };
 
-const formatRelativeTime = (date?: Date) => {
-  if (!date) return "agora";
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.floor(diffMs / (60 * 1000));
-  if (minutes < 1) return "agora";
-  if (minutes < 60) return `há ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `há ${hours}h`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `há ${days}d`;
+const formatDisplayDate = (date?: Date) => {
+  if (!date) return "Período selecionado";
   return date.toLocaleDateString("pt-BR");
 };
 
@@ -43,8 +35,6 @@ export function AlertCard({ alert }: AlertCardProps) {
   const speciesLabel = alert.species || "Espécie não informada";
   const stateLabel = alert.state || "UF";
   const regionLabel = alert.regionIBGE || alert.regionGroup;
-  const municipalityLabel = alert.municipality || alert.cityName || alert.city;
-  const localidadeLabel = alert.localidadeAproximada;
   const herdCountLabel = alert.context?.herdCountLabel ?? alert.herdCount;
   const casesLabel = alert.cases ? `${alert.cases} casos` : herdCountLabel ? `${herdCountLabel} casos` : "Casos não informados";
   const detailsLabel = alert.context?.alertDetails?.length ? alert.context.alertDetails.join(", ") : null;
@@ -56,7 +46,7 @@ export function AlertCard({ alert }: AlertCardProps) {
   return (
     <div className={`rounded-xl border p-4 shadow-sm ${severityStyle}`}>
       <div className="flex items-center justify-between text-xs uppercase tracking-wide">
-        <span>{formatRelativeTime(createdAt)}</span>
+        <span>{formatDisplayDate(createdAt)}</span>
         <span>{stateLabel}</span>
       </div>
       <div className="mt-3 space-y-1">
@@ -65,11 +55,8 @@ export function AlertCard({ alert }: AlertCardProps) {
         {alert.alertGroup && alert.alertType && (
           <p className="text-xs text-slate-500">{mapAlertGroupLabel(alert.alertGroup)}</p>
         )}
-        {(regionLabel || municipalityLabel) && (
-          <p className="text-xs text-slate-500">
-            {[stateLabel, regionLabel, municipalityLabel].filter(Boolean).join(" • ")}
-            {localidadeLabel ? ` — ${localidadeLabel}` : ""}
-          </p>
+        {regionLabel && (
+          <p className="text-xs text-slate-500">{[stateLabel, regionLabel].filter(Boolean).join(" • ")}</p>
         )}
       </div>
       <div className="mt-3 space-y-2 text-xs text-slate-700">
@@ -78,19 +65,9 @@ export function AlertCard({ alert }: AlertCardProps) {
             <span className="font-semibold text-slate-800">Detalhes rápidos:</span> {detailsLabel}
           </p>
         )}
-        {parasiteObservation && (
-          <p className="text-slate-600">
-            <span className="font-semibold text-slate-700">Observação clínica:</span> {parasiteObservation}
-          </p>
-        )}
-        {alert.context?.eventOnset && (
+        {(parasiteObservation || alert.context?.eventOnset || alert.context?.recentChanges || alert.context?.notes) && (
           <p>
-            <span className="font-semibold text-slate-800">Início observado:</span> {alert.context.eventOnset}
-          </p>
-        )}
-        {alert.context?.recentChanges && (
-          <p>
-            <span className="font-semibold text-slate-800">Mudanças recentes:</span> {alert.context.recentChanges}
+            <span className="font-semibold text-slate-800">Observação clínica registrada (não exibida publicamente)</span>
           </p>
         )}
         {(alert.context?.feed?.feedChange || alert.context?.feed?.feedType || alert.context?.feed?.feedOrigin) && (
@@ -120,16 +97,9 @@ export function AlertCard({ alert }: AlertCardProps) {
             <p className="font-semibold text-slate-800">Ambiente</p>
             <ul className="mt-1 space-y-1">
               {environmentSignalsLabel && <li>• Sinais: {environmentSignalsLabel}</li>}
-              {alert.context?.environment?.regionalPattern && (
-                <li>• Padrão regional: {alert.context.environment.regionalPattern}</li>
-              )}
+              {alert.context?.environment?.regionalPattern && <li>• Observação clínica registrada (não exibida publicamente)</li>}
             </ul>
           </div>
-        )}
-        {alert.context?.notes && (
-          <p>
-            <span className="font-semibold text-slate-800">Observação clínica registrada (não exibida no painel)</span>
-          </p>
         )}
       </div>
       <div className="mt-4 flex items-center justify-between text-xs">

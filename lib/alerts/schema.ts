@@ -1,7 +1,7 @@
 export type SpeciesOption = "cavalo" | "bovino" | "cao" | "gato" | "ave" | "outro";
 export type EventCategory =
   | "intoxicacao"
-  | "surtos"
+  | "variacao-estatistica"
   | "contaminacao"
   | "reacao-adversa"
   | "mortalidade-incomum"
@@ -39,7 +39,7 @@ export const categoryOptions: { value: EventCategory; label: string }[] = [
   { value: "intoxicacao", label: "Intoxicação" },
   { value: "contaminacao", label: "Suspeita de contaminação" },
   { value: "reacao-adversa", label: "Reação adversa incomum" },
-  { value: "surtos", label: "Agregação incomum" },
+  { value: "variacao-estatistica", label: "Agregação incomum" },
   { value: "mortalidade-incomum", label: "Mortalidade incomum" },
   { value: "outro", label: "Outro" },
 ];

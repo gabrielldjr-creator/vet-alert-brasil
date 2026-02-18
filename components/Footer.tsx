@@ -7,7 +7,7 @@ export function Footer() {
         <div>
           <div className="text-base font-semibold text-slate-800">Vet Alert Brasil</div>
           <p className="mt-1 max-w-xl text-sm text-slate-600">
-            Plataforma de inteligência regional exclusiva para médicos-veterinários. Sinais agregados, nenhuma recomendação clínica.
+            Plataforma de análise agregada exclusiva para médicos-veterinários. Indicadores operacionais, sem recomendação clínica.
           </p>
         </div>
         <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-700">
