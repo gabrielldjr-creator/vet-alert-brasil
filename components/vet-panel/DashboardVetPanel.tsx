@@ -24,12 +24,12 @@ const speciesOptions = [
   "Outros animais de produção",
 ];
 
-const severityOptions = ["Atenção", "Preocupante", "Urgente"];
+const severityOptions = ["Prioridade baixa", "Prioridade moderada", "Prioridade operacional elevada"];
 
 const timeWindowOptions = [
-  { value: "24h", label: "Últimas 24h" },
-  { value: "7d", label: "Últimos 7 dias" },
-  { value: "30d", label: "Últimos 30 dias" },
+  { value: "7d", label: "Período selecionado (7 dias)" },
+  { value: "30d", label: "Período selecionado (30 dias)" },
+  { value: "90d", label: "Período selecionado (90 dias)" },
 ];
 
 const getAlertTimestamp = (alert: AlertRecord) => {
@@ -112,7 +112,6 @@ export function DashboardVetPanel() {
   });
   const searchParams = useSearchParams();
   const registrationFlag = searchParams.get("registrado") === "1";
-  const [referenceNow, setReferenceNow] = useState(() => new Date());
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -207,18 +206,15 @@ export function DashboardVetPanel() {
     };
   }, [status]);
 
-  useEffect(() => {
-    setReferenceNow(new Date());
-  }, [filters.timeWindow]);
 
   const filteredAlerts = useMemo(() => {
-    const cutoff = new Date(referenceNow);
-    if (filters.timeWindow === "24h") {
-      cutoff.setHours(cutoff.getHours() - 24);
-    } else if (filters.timeWindow === "7d") {
+    const cutoff = new Date();
+    if (filters.timeWindow === "7d") {
       cutoff.setDate(cutoff.getDate() - 7);
-    } else {
+    } else if (filters.timeWindow === "30d") {
       cutoff.setDate(cutoff.getDate() - 30);
+    } else {
+      cutoff.setDate(cutoff.getDate() - 90);
     }
 
     const scopeStates =
@@ -235,7 +231,7 @@ export function DashboardVetPanel() {
       if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
       return true;
     });
-  }, [alerts, filters, referenceNow]);
+  }, [alerts, filters]);
 
   const alertsWithoutTimeLimit = useMemo(() => {
     const scopeStates = filters.stateScope === "all" ? null : new Set([normalizeState(filters.stateScope)]);
@@ -429,18 +425,18 @@ export function DashboardVetPanel() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
       <Card className="border-slate-200 bg-slate-50 p-6 text-sm text-slate-800">
         <p>
-          Este painel apresenta indicadores operacionais agregados e despersonalizados.
+          Esta plataforma fornece análise agregada e observacional de registros clínicos.
           <br />
-          Não constitui vigilância sanitária, notificação oficial ou confirmação diagnóstica.
+          Não substitui notificação oficial obrigatória, não exerce função de vigilância sanitária e não confirma diagnósticos.
           <br />
-          Para suspeitas de doenças de notificação obrigatória, utilize exclusivamente os canais oficiais.
+          Registros relacionados a doenças de notificação obrigatória devem seguir o fluxo oficial previsto em lei.
         </p>
       </Card>
 
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Painel operacional veterinário</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Inteligência de gestão clínica regional</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">Painel situacional de gestão clínica regional</h1>
           <p className="max-w-3xl text-base text-slate-600">
             Visão agregada para preparo de rotina, organização de condutas e leitura de contexto de manejo no estado selecionado.
           </p>
@@ -453,7 +449,7 @@ export function DashboardVetPanel() {
 
       {registrationFlag && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-800">
-          Registro salvo com sucesso. Os indicadores foram atualizados automaticamente.
+          Registro salvo com sucesso. Os indicadores foram atualizados para o período selecionado.
         </div>
       )}
 
@@ -498,10 +494,10 @@ export function DashboardVetPanel() {
         >
           <div className="space-y-3 text-sm">
             <div className="rounded-xl bg-slate-50 p-3 text-slate-700">
-              Classe terapêutica mais frequente: <span className="font-semibold text-slate-900">{dashboardData.topClass}</span> ({formatPercent(dashboardData.topClassPercentage)})
+              Distribuição terapêutica predominante: <span className="font-semibold text-slate-900">{dashboardData.topClass}</span> ({formatPercent(dashboardData.topClassPercentage)})
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-slate-700">
-              Tendência de recorrência: <span className="font-semibold text-slate-900">{dashboardData.classTrend >= 0 ? "↑" : "↓"} {formatPercent(Math.abs(dashboardData.classTrend))}</span> em relação à base de 90 dias.
+              Variação estatística de recorrência: <span className="font-semibold text-slate-900">{dashboardData.classTrend >= 0 ? "↑" : "↓"} {formatPercent(Math.abs(dashboardData.classTrend))}</span> em relação à base de 90 dias.
             </div>
           </div>
         </MetricCard>

@@ -1,7 +1,7 @@
 import AlertFormClient from "./AlertFormClient";
 
 export const metadata = {
-  title: "Registrar sinal veterinário | Vet Alert Brasil",
+  title: "Registrar registro observacional veterinário | Vet Alert Brasil",
   description:
     "Formulário profissional, rápido e sem fricção para veterinários autenticados registrarem sinais descritivos.",
 };

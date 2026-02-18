@@ -105,7 +105,7 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-slate-900">6. COMPARTILHAMENTO DE DADOS</h2>
           <p>Durante o piloto:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Dados anonimizados podem ser apresentados em relatórios estatísticos, mapas regionais descritivos e registros regionais</li>
+            <li>Dados anonimizados podem ser apresentados em relatórios estatísticos, indicadores regionais descritivos e registros regionais</li>
             <li>Sempre de forma agregada, sem identificação direta ou indireta de participantes</li>
           </ul>
         </section>
