@@ -67,6 +67,16 @@ const alertCategories = [
       "Superlotação",
       "Colapso relacionado a transporte ou esforço",
       "Suspeita de maus-tratos ou negligência",
+      "Lesão oral associada a equipamento de condução",
+      "Lesão em região costal associada a pressão mecânica",
+      "Lesão cervical associada a contenção",
+      "Ferida cutânea associada a fricção de equipamento",
+      "Sensibilidade exacerbada em região de contato de instrumentos",
+      "Hematoma em área de contato de pressão",
+      "Rigidez muscular associada a sobrecarga mecânica",
+      "Alteração comportamental sob estímulo mecânico",
+      "Desconforto locomotor associado a ajuste de equipamento",
+      "Outro indicador físico observacional (campo estruturado limitado a 100 caracteres)",
     ],
   },
   {
@@ -173,6 +183,8 @@ const detailOptions: Record<string, string[]> = {
 };
 
 const parasiteAlertType = "Quadro parasitário / falha de controle parasitário";
+const physicalIntegrityOtherAlertType =
+  "Outro indicador físico observacional (campo estruturado limitado a 100 caracteres)";
 const parasiteObservationOptions = [
   "Presença de carrapatos",
   "Alta carga de ectoparasitas",
@@ -309,6 +321,7 @@ export default function AlertFormClient() {
   const [arrivalOptionalNote, setArrivalOptionalNote] = useState("");
   const [parasiteObservationOption, setParasiteObservationOption] = useState("");
   const [parasiteObservationNote, setParasiteObservationNote] = useState("");
+  const [physicalIntegrityObservationNote, setPhysicalIntegrityObservationNote] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -433,6 +446,7 @@ export default function AlertFormClient() {
     setEnvironmentSignals([]);
     setParasiteObservationOption("");
     setParasiteObservationNote("");
+    setPhysicalIntegrityObservationNote("");
     setErrors([]);
   };
 
@@ -451,6 +465,11 @@ export default function AlertFormClient() {
     if (parasiteObservationOption) return parasiteObservationOption;
     return trimmed;
   }, [alertType, parasiteObservationNote, parasiteObservationOption]);
+
+  const physicalIntegrityObservationValue = useMemo(() => {
+    if (alertType !== physicalIntegrityOtherAlertType) return "";
+    return physicalIntegrityObservationNote.trim().slice(0, 100);
+  }, [alertType, physicalIntegrityObservationNote]);
 
   const validateCurrentStep = () => {
     const missing: string[] = [];
@@ -505,6 +524,9 @@ export default function AlertFormClient() {
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       await user.getIdToken();
       const parasiteObservation = parasiteObservationValue ? parasiteObservationValue : null;
+      const physicalIntegrityObservation = physicalIntegrityObservationValue
+        ? physicalIntegrityObservationValue
+        : null;
 
       await addDoc(collection(db, "alerts"), {
         createdAt: serverTimestamp(),
@@ -552,6 +574,7 @@ export default function AlertFormClient() {
           herdCountLabel: herdCount,
           country,
           ...(parasiteObservation ? { parasiteObservation } : {}),
+          ...(physicalIntegrityObservation ? { physicalIntegrityObservation } : {}),
         },
         source: "pilot",
       });
@@ -806,6 +829,12 @@ export default function AlertFormClient() {
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opções da categoria</p>
+                {alertGroup === "Bem-estar / Manejo" ? (
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                    Registros observacionais relacionados à integridade física do animal, sem identificação de pessoas ou
+                    responsabilização individual.
+                  </p>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {alertCategories
                     .find((group) => group.group === alertGroup)
@@ -899,6 +928,17 @@ export default function AlertFormClient() {
                       helper="Descrição breve. Se a lista não atender, escreva em texto livre."
                     />
                   </div>
+                )}
+
+                {alertType === physicalIntegrityOtherAlertType && (
+                  <Input
+                    name="physicalIntegrityObservationNote"
+                    label="Indicador físico observacional (opcional)"
+                    value={physicalIntegrityObservationNote}
+                    onChange={(event) => setPhysicalIntegrityObservationNote(event.target.value.slice(0, 100))}
+                    maxLength={100}
+                    helper="Descrição curta e observacional, sem identificação de pessoas."
+                  />
                 )}
               </div>
             </div>
