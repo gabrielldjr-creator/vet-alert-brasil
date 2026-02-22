@@ -48,11 +48,12 @@ export type AlertRecord = {
 };
 
 export type VetPanelFiltersState = {
-  stateScope: "all" | "SC" | "MT";
+  macroRegion: "all" | "sul" | "sudeste" | "centro-oeste" | "nordeste" | "norte";
+  stateScope: "all" | string;
   species: string;
   alertGroup: string;
   severity: string;
   regionIBGE: "all" | string;
   municipality: "all" | string;
-  timeWindow: "7d" | "30d" | "90d";
+  timeWindow: "30d" | "60d" | "90d";
 };

@@ -14,13 +14,10 @@ export type VetPanelFiltersProps = {
   regionIBGEOptions: string[];
   severityOptions: string[];
   timeWindowOptions: FilterOption[];
+  macroRegionOptions: FilterOption[];
+  stateOptions: FilterOption[];
+  showStateOptions: boolean;
 };
-
-const scopeOptions: FilterOption[] = [
-  { value: "all", label: "Brasil" },
-  { value: "SC", label: "Santa Catarina (SC)" },
-  { value: "MT", label: "Mato Grosso (MT)" },
-];
 
 const Chip = ({
   active,
@@ -49,6 +46,9 @@ export function VetPanelFilters({
   speciesOptions,
   severityOptions,
   timeWindowOptions,
+  macroRegionOptions,
+  stateOptions,
+  showStateOptions,
 }: VetPanelFiltersProps) {
   const updateFilter = (partial: Partial<VetPanelFiltersState>) => {
     onChange({ ...filters, ...partial });
@@ -57,23 +57,40 @@ export function VetPanelFilters({
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">Filtros de gestão</p>
-        <p className="text-sm text-slate-600">Ajuste escopo, espécie, prioridade de atendimento e período de análise.</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">Filtros clínicos</p>
+        <p className="text-sm text-slate-600">Ajuste recortes agregados de macrorregião, estado, espécie e período.</p>
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Escopo estadual</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Macrorregião</p>
         <div className="flex flex-wrap gap-2">
-          {scopeOptions.map((option) => (
+          {macroRegionOptions.map((option) => (
             <Chip
               key={option.value}
               label={option.label}
-              active={filters.stateScope === option.value}
-              onClick={() => updateFilter({ stateScope: option.value as VetPanelFiltersState["stateScope"] })}
+              active={filters.macroRegion === option.value}
+              onClick={() => updateFilter({ macroRegion: option.value, stateScope: "all" })}
             />
           ))}
         </div>
       </div>
+
+      {showStateOptions && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Estado (visão agregada)</p>
+          <div className="flex flex-wrap gap-2">
+            <Chip label="Todos" active={filters.stateScope === "all"} onClick={() => updateFilter({ stateScope: "all" })} />
+            {stateOptions.map((option) => (
+              <Chip
+                key={option.value}
+                label={option.label}
+                active={filters.stateScope === option.value}
+                onClick={() => updateFilter({ stateScope: option.value })}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Espécie</p>
