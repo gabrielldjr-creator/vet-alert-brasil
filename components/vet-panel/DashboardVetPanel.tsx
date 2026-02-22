@@ -1,18 +1,59 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
 import { Button } from "../Button";
 import { Card } from "../Card";
 import { ensurePilotAuth } from "../../lib/auth";
 import { auth, db } from "../../lib/firebase";
+import { mapAlertGroupLabel } from "./alertLabeling";
 import { VetPanelFilters } from "./VetPanelFilters";
 import { AlertRecord, VetPanelFiltersState } from "./types";
 
-const PILOT_MODE =
-  process.env.NEXT_PUBLIC_PILOT_MODE === "true" || process.env.NEXT_PUBLIC_PILOT_MODE === "1";
+const PILOT_MODE = process.env.NEXT_PUBLIC_PILOT_MODE === "true" || process.env.NEXT_PUBLIC_PILOT_MODE === "1";
+const STRATEGIC_ACCESS = process.env.NEXT_PUBLIC_STRATEGIC_VIEW === "true";
+const MIN_STATE_THRESHOLD = 10;
+
+const MACRO_REGION_BY_STATE: Record<string, VetPanelFiltersState["macroRegion"]> = {
+  AC: "norte",
+  AL: "nordeste",
+  AP: "norte",
+  AM: "norte",
+  BA: "nordeste",
+  CE: "nordeste",
+  DF: "centro-oeste",
+  ES: "sudeste",
+  GO: "centro-oeste",
+  MA: "nordeste",
+  MT: "centro-oeste",
+  MS: "centro-oeste",
+  MG: "sudeste",
+  PA: "norte",
+  PB: "nordeste",
+  PR: "sul",
+  PE: "nordeste",
+  PI: "nordeste",
+  RJ: "sudeste",
+  RN: "nordeste",
+  RS: "sul",
+  RO: "norte",
+  RR: "norte",
+  SC: "sul",
+  SP: "sudeste",
+  SE: "nordeste",
+  TO: "norte",
+};
+
+const MACRO_REGION_OPTIONS = [
+  { value: "all", label: "Brasil" },
+  { value: "sul", label: "Região Sul" },
+  { value: "sudeste", label: "Região Sudeste" },
+  { value: "centro-oeste", label: "Região Centro-Oeste" },
+  { value: "nordeste", label: "Região Nordeste" },
+  { value: "norte", label: "Região Norte" },
+] as const;
 
 const speciesOptions = [
   "Equinos",
@@ -25,40 +66,28 @@ const speciesOptions = [
 ];
 
 const severityOptions = ["Atenção", "Preocupante", "Urgente"];
-
 const timeWindowOptions = [
-  { value: "7d", label: "Período selecionado (7 dias)" },
   { value: "30d", label: "Período selecionado (30 dias)" },
+  { value: "60d", label: "Período selecionado (60 dias)" },
   { value: "90d", label: "Período selecionado (90 dias)" },
 ];
 
-const getAlertTimestamp = (alert: AlertRecord) => {
-  return alert.createdAt?.toDate?.() ?? alert.timestamp?.toDate?.();
-};
+type LayerType = "clinical" | "strategic";
 
 const normalizeText = (value?: string) => value?.trim().toLowerCase() ?? "";
-
 const normalizeState = (value?: string) => value?.trim().toUpperCase() ?? "";
-
-const includesValue = (value: string[] | string | undefined, expected: string) => {
-  if (!value) return false;
-  if (Array.isArray(value)) return value.some((item) => normalizeText(item) === normalizeText(expected));
-  return normalizeText(value) === normalizeText(expected);
-};
+const clamp = (value: number) => Math.max(0, Math.min(100, value));
+const formatPercent = (value: number) => `${Math.round(clamp(value))}%`;
+const getAlertTimestamp = (alert: AlertRecord) => alert.createdAt?.toDate?.() ?? alert.timestamp?.toDate?.();
 
 const asArray = (value: string[] | string | undefined) => {
   if (!value) return [] as string[];
   return Array.isArray(value) ? value : [value];
 };
 
-const clamp = (value: number) => Math.max(0, Math.min(100, value));
-
-const formatPercent = (value: number) => `${Math.round(clamp(value))}%`;
-
-const getScopeLabel = (scope: VetPanelFiltersState["stateScope"]) => {
-  if (scope === "SC") return "Santa Catarina (SC)";
-  if (scope === "MT") return "Mato Grosso (MT)";
-  return "Brasil";
+const getMacroRegion = (state?: string): VetPanelFiltersState["macroRegion"] | null => {
+  const normalized = normalizeState(state);
+  return MACRO_REGION_BY_STATE[normalized] ?? null;
 };
 
 function ProgressBar({ value }: { value: number }) {
@@ -69,31 +98,21 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-function Donut({ value }: { value: number }) {
-  const safe = clamp(value);
-  return (
-    <div
-      className="grid h-28 w-28 place-items-center rounded-full"
-      style={{
-        background: `conic-gradient(rgb(71 85 105) ${safe * 3.6}deg, rgb(226 232 240) 0deg)`,
-      }}
-    >
-      <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-lg font-semibold text-slate-800">
-        {formatPercent(safe)}
-      </div>
-    </div>
-  );
-}
+function Donut({ data }: { data: { label: string; value: number }[] }) {
+  const total = data.reduce((acc, item) => acc + item.value, 0) || 1;
+  const palette = ["#334155", "#64748b", "#94a3b8", "#cbd5e1", "#475569"];
 
-function MetricCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  const segments = data.reduce<string[]>((acc, item, index) => {
+    const start = acc.length ? Number(acc[acc.length - 1].split(" ").at(-1)?.replace("deg", "") ?? "0") : 0;
+    const end = start + (item.value / total) * 360;
+    acc.push(`${palette[index % palette.length]} ${start}deg ${end}deg`);
+    return acc;
+  }, []);
+
   return (
-    <Card className="space-y-4 p-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-        <p className="mt-1 text-sm text-slate-600">{description}</p>
-      </div>
-      {children}
-    </Card>
+    <div className="grid h-32 w-32 place-items-center rounded-full" style={{ background: `conic-gradient(${segments.join(", ")})` }}>
+      <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-sm font-semibold text-slate-700">{data.length} perfis</div>
+    </div>
   );
 }
 
@@ -101,7 +120,9 @@ export function DashboardVetPanel() {
   const [status, setStatus] = useState<"checking" | "restricted" | "ready">("checking");
   const [profile, setProfile] = useState<{ state?: string; city?: string } | null>(null);
   const [alerts, setAlerts] = useState<AlertRecord[]>([]);
+  const [layer, setLayer] = useState<LayerType>("clinical");
   const [filters, setFilters] = useState<VetPanelFiltersState>({
+    macroRegion: "all",
     stateScope: "all",
     species: "",
     alertGroup: "",
@@ -110,16 +131,14 @@ export function DashboardVetPanel() {
     municipality: "all",
     timeWindow: "30d",
   });
+
   const searchParams = useSearchParams();
   const registrationFlag = searchParams.get("registrado") === "1";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       const allowAccess = Boolean(user) || PILOT_MODE;
-
-      if (PILOT_MODE) {
-        setStatus("ready");
-      }
+      if (PILOT_MODE) setStatus("ready");
 
       if (!user) {
         if (allowAccess) return;
@@ -138,26 +157,16 @@ export function DashboardVetPanel() {
         const profileSnap = await getDoc(profileRef);
 
         if (!profileSnap.exists()) {
-          const fallbackProfile = {
-            uid: user.uid,
-            role: "vet",
-            state: "SC",
-            verified: false,
-            createdAt: serverTimestamp(),
-          };
+          const fallbackProfile = { uid: user.uid, role: "vet", state: "SC", verified: false, createdAt: serverTimestamp() };
           await setDoc(profileRef, fallbackProfile);
           setProfile(fallbackProfile);
-          setStatus("ready");
           return;
         }
 
         setProfile(profileSnap.data() as { state?: string; city?: string });
-        setStatus("ready");
       } catch (error) {
         console.error("Erro ao verificar perfil do veterinário", error);
-        if (!allowAccess) {
-          setStatus("restricted");
-        }
+        if (!allowAccess) setStatus("restricted");
       }
     });
 
@@ -166,19 +175,12 @@ export function DashboardVetPanel() {
 
   useEffect(() => {
     if (status !== "ready") return;
-
     const baseQuery = query(collection(db, "alerts"), orderBy("createdAt", "desc"));
-    let isActive = true;
 
     const loadInitialAlerts = async () => {
       try {
         const snapshot = await getDocs(baseQuery);
-        if (!isActive) return;
-        const data = snapshot.docs.map((docSnap) => ({
-          ...(docSnap.data() as AlertRecord),
-          id: docSnap.id,
-        }));
-        setAlerts(data);
+        setAlerts(snapshot.docs.map((docSnap) => ({ ...(docSnap.data() as AlertRecord), id: docSnap.id })));
       } catch (error) {
         console.error("Erro ao carregar registros", error);
       }
@@ -186,363 +188,171 @@ export function DashboardVetPanel() {
 
     loadInitialAlerts();
 
-    const unsubscribe = onSnapshot(
-      baseQuery,
-      (snapshot) => {
-        const data = snapshot.docs.map((docSnap) => ({
-          ...(docSnap.data() as AlertRecord),
-          id: docSnap.id,
-        }));
-        setAlerts(data);
-      },
-      (error) => {
-        console.error("Erro ao sincronizar registros", error);
-      }
-    );
+    const unsubscribe = onSnapshot(baseQuery, (snapshot) => {
+      setAlerts(snapshot.docs.map((docSnap) => ({ ...(docSnap.data() as AlertRecord), id: docSnap.id })));
+    });
 
-    return () => {
-      isActive = false;
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [status]);
 
-
-  const filteredAlerts = useMemo(() => {
+  const prefilteredByWindow = useMemo(() => {
     const cutoff = new Date();
-    if (filters.timeWindow === "7d") {
-      cutoff.setDate(cutoff.getDate() - 7);
-    } else if (filters.timeWindow === "30d") {
-      cutoff.setDate(cutoff.getDate() - 30);
-    } else {
-      cutoff.setDate(cutoff.getDate() - 90);
-    }
-
-    const scopeStates =
-      filters.stateScope === "all" ? null : new Set([normalizeState(filters.stateScope)]);
+    const days = filters.timeWindow === "30d" ? 30 : filters.timeWindow === "60d" ? 60 : 90;
+    cutoff.setDate(cutoff.getDate() - days);
 
     return alerts.filter((alert) => {
       const createdAt = getAlertTimestamp(alert);
       if (createdAt && createdAt < cutoff) return false;
-      if (scopeStates) {
-        const alertState = normalizeState(alert.state);
-        if (!alertState || !scopeStates.has(alertState)) return false;
-      }
       if (filters.species && normalizeText(alert.species) !== normalizeText(filters.species)) return false;
       if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
       return true;
     });
-  }, [alerts, filters]);
+  }, [alerts, filters.severity, filters.species, filters.timeWindow]);
 
-  const alertsWithoutTimeLimit = useMemo(() => {
-    const scopeStates = filters.stateScope === "all" ? null : new Set([normalizeState(filters.stateScope)]);
-    return alerts.filter((alert) => {
-      if (scopeStates) {
-        const alertState = normalizeState(alert.state);
-        if (!alertState || !scopeStates.has(alertState)) return false;
-      }
-      if (filters.species && normalizeText(alert.species) !== normalizeText(filters.species)) return false;
-      if (filters.severity && normalizeText(alert.severity) !== normalizeText(filters.severity)) return false;
+  const stateOptions = useMemo(() => {
+    const counts = prefilteredByWindow.reduce<Record<string, number>>((acc, alert) => {
+      const state = normalizeState(alert.state);
+      const macro = getMacroRegion(state);
+      if (!state || !macro) return acc;
+      if (filters.macroRegion !== "all" && macro !== filters.macroRegion) return acc;
+      acc[state] = (acc[state] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.keys(counts)
+      .filter((state) => counts[state] >= MIN_STATE_THRESHOLD)
+      .sort()
+      .map((state) => ({ value: state, label: state }));
+  }, [filters.macroRegion, prefilteredByWindow]);
+
+  const showStateOptions = stateOptions.length > 0;
+  const activeStateScope = filters.stateScope !== "all" && stateOptions.some((option) => option.value === filters.stateScope) ? filters.stateScope : "all";
+
+  const filteredAlerts = useMemo(() => {
+    return prefilteredByWindow.filter((alert) => {
+      const state = normalizeState(alert.state);
+      const macro = getMacroRegion(state);
+      if (!macro) return false;
+      if (filters.macroRegion !== "all" && macro !== filters.macroRegion) return false;
+      if (activeStateScope !== "all" && state !== activeStateScope) return false;
       return true;
     });
-  }, [alerts, filters.severity, filters.species, filters.stateScope]);
+  }, [activeStateScope, filters.macroRegion, prefilteredByWindow]);
 
   const dashboardData = useMemo(() => {
     const source = filteredAlerts;
     const total = source.length || 1;
 
-    const opi =
-      (source.reduce((acc, alert) => {
-        const whenCalled = alert.arrival_context?.when_called;
-        const factors = alert.arrival_context?.external_factors ?? [];
-        const situation = alert.arrival_context?.situation_found;
-
-        const lateAttendance = whenCalled === "late" || whenCalled === "very_late" || factors.includes("delayed_call");
-        const socioeconomicPressure = factors.includes("financial_limitation");
-        const protocolDeviation = factors.includes("recommendation_not_followed") || factors.includes("previous_management");
-        const delayedIntervention = situation === "critical" || whenCalled === "very_late";
-
-        const score = [lateAttendance, socioeconomicPressure, protocolDeviation, delayedIntervention].filter(Boolean).length / 4;
-        return acc + score;
-      }, 0) /
-        total) *
-      100;
-
-    const poiFromWindow = (days: number) => {
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - days);
-      const scoped = alertsWithoutTimeLimit.filter((alert) => {
-        const createdAt = getAlertTimestamp(alert);
-        return createdAt ? createdAt >= cutoff : true;
-      });
-      if (scoped.length === 0) return 0;
-      const matched = scoped.filter((alert) => {
-        const factors = alert.arrival_context?.external_factors ?? [];
-        const feedChange = alert.context?.feed?.feedChange;
-        const drugCategory = alert.context?.pharma?.drugCategory;
-        const drugInterval = alert.context?.pharma?.drugInterval;
-
-        const preventiveProtocolNotFollowed = factors.includes("recommendation_not_followed");
-        const vaccinationTimingDeviation = includesValue(drugCategory, "Vacina") && Boolean(drugInterval);
-        const feedChanged = Boolean(feedChange && normalizeText(feedChange) !== normalizeText("Nenhuma mudança"));
-        const recurrentDrugClassUsageReported = Boolean(alert.context?.pharma?.drugExposure === "Sim" || drugInterval === "< 24h" || drugInterval === "1–3 dias");
-
-        return (
-          preventiveProtocolNotFollowed ||
-          vaccinationTimingDeviation ||
-          feedChanged ||
-          recurrentDrugClassUsageReported
-        );
-      }).length;
-
-      return (matched / scoped.length) * 100;
-    };
-
-    const poi30 = poiFromWindow(30);
-    const poi60 = poiFromWindow(60);
-    const poi90 = poiFromWindow(90);
-
-    const classFrequency = source.reduce<Record<string, number>>((acc, alert) => {
-      asArray(alert.context?.pharma?.drugCategory).forEach((category) => {
-        const normalized = category.trim();
-        if (!normalized) return;
-        acc[normalized] = (acc[normalized] || 0) + 1;
-      });
+    const syndromeMap = source.reduce<Record<string, number>>((acc, alert) => {
+      const grouped = mapAlertGroupLabel(alert.alertGroup) || alert.alertType || "Manifestações cutâneas crônicas";
+      const safeGrouped = grouped === "Síndromes Compatíveis com Zoonoses" ? "Manifestações cutâneas crônicas" : grouped;
+      acc[safeGrouped] = (acc[safeGrouped] || 0) + 1;
       return acc;
     }, {});
 
-    const topClassEntry = Object.entries(classFrequency).sort((a, b) => b[1] - a[1])[0] ?? ["Sem classificação", 0];
-    const topClassPercentage = total > 0 ? (topClassEntry[1] / total) * 100 : 0;
+    const profileDistribution = Object.entries(syndromeMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({ label, value: (count / total) * 100 }));
 
-    const classTrend = (() => {
-      const topClass = topClassEntry[0];
-      if (topClass === "Sem classificação") return 0;
-      const now = new Date();
-      const cutoff30 = new Date(now);
-      cutoff30.setDate(cutoff30.getDate() - 30);
-      const cutoff90 = new Date(now);
-      cutoff90.setDate(cutoff90.getDate() - 90);
+    const sharedContext = {
+      atendimentoTardio: (source.filter((a) => ["late", "very_late"].includes(a.arrival_context?.when_called ?? "")).length / total) * 100,
+      adesaoTerapeutica:
+        (source.filter((a) => (a.arrival_context?.external_factors ?? []).includes("recommendation_not_followed")).length / total) * 100,
+      mudancasManejo:
+        (source.filter((a) => Boolean(a.context?.recentChanges && normalizeText(a.context?.recentChanges) !== "nenhuma mudança")).length / total) * 100,
+      cargaParasitaria: (source.filter((a) => normalizeText(a.context?.parasiteObservation).includes("alta carga")).length / total) * 100,
+    };
 
-      const recent = alertsWithoutTimeLimit.filter((alert) => {
-        const timestamp = getAlertTimestamp(alert);
-        return timestamp ? timestamp >= cutoff30 : false;
-      });
-      const baseline = alertsWithoutTimeLimit.filter((alert) => {
-        const timestamp = getAlertTimestamp(alert);
-        return timestamp ? timestamp >= cutoff90 : false;
-      });
-
-      const recentRate = recent.length
-        ? (recent.filter((alert) => includesValue(alert.context?.pharma?.drugCategory, topClass)).length / recent.length) * 100
-        : 0;
-      const baseRate = baseline.length
-        ? (baseline.filter((alert) => includesValue(alert.context?.pharma?.drugCategory, topClass)).length / baseline.length) * 100
-        : 0;
-
-      return recentRate - baseRate;
-    })();
+    const therapeuticDistribution = Object.entries(
+      source.reduce<Record<string, number>>((acc, alert) => {
+        asArray(alert.context?.pharma?.drugCategory).forEach((category) => {
+          const normalized = category.trim();
+          if (!normalized) return;
+          acc[normalized] = (acc[normalized] || 0) + 1;
+        });
+        return acc;
+      }, {})
+    )
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({ label, value: (count / total) * 100 }));
 
     const complexityScore =
       (source.reduce((acc, alert) => {
-        const hasStressFactor = (alert.arrival_context?.external_factors ?? []).includes("financial_limitation");
-        const hasTreatmentFactor = alert.context?.pharma?.drugExposure === "Sim" || asArray(alert.context?.pharma?.drugCategory).length > 0;
-        const hasLateCall = ["late", "very_late"].includes(alert.arrival_context?.when_called ?? "");
-        const hasEnvironment = (alert.context?.environment?.environmentSignals ?? []).length > 0;
-
-        const multiFactorCase = [hasStressFactor, hasTreatmentFactor, hasLateCall, hasEnvironment].filter(Boolean).length >= 3;
-        const combinedCondition = hasStressFactor && hasTreatmentFactor && hasLateCall;
-
-        const score = [multiFactorCase, combinedCondition, hasEnvironment].filter(Boolean).length / 3;
-        return acc + score;
+        const factors = [
+          ["late", "very_late"].includes(alert.arrival_context?.when_called ?? ""),
+          (alert.arrival_context?.external_factors ?? []).length > 0,
+          asArray(alert.context?.pharma?.drugCategory).length > 0,
+          (alert.context?.environment?.environmentSignals ?? []).length > 0,
+        ].filter(Boolean).length;
+        return acc + factors / 4;
       }, 0) /
         total) *
       100;
 
-    const complexityTier = complexityScore < 34 ? "Baixo" : complexityScore < 67 ? "Moderado" : "Elevado";
-
-    const contextualRisk = {
-      transporteRecente:
-        (source.filter((alert) => normalizeText(alert.alertType).includes("transporte") || normalizeText(alert.context?.recentChanges).includes("72h")).length /
-          total) *
-        100,
-      mudancaAlimentar:
-        (source.filter((alert) => {
-          const feedChange = alert.context?.feed?.feedChange;
-          return Boolean(feedChange && normalizeText(feedChange) !== normalizeText("Nenhuma mudança"));
-        }).length /
-          total) *
-        100,
-      altaCargaParasitaria:
-        (source.filter((alert) => {
-          const obs = normalizeText(alert.context?.parasiteObservation);
-          return obs.includes("alta carga") || normalizeText(alert.alertType).includes("parasit");
-        }).length /
-          total) *
-        100,
-      pressaoEconomica:
-        (source.filter((alert) => (alert.arrival_context?.external_factors ?? []).includes("financial_limitation")).length / total) * 100,
+    return {
+      profileDistribution,
+      sharedContext,
+      therapeuticDistribution,
+      complexityScore,
+      complexityTier: complexityScore < 34 ? "Baixo" : complexityScore < 67 ? "Moderado" : "Elevado",
     };
+  }, [filteredAlerts]);
+
+  const strategicData = useMemo(() => {
+    const compareWindow = (days: number) => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      return filteredAlerts.filter((alert) => {
+        const date = getAlertTimestamp(alert);
+        return date ? date >= cutoff : true;
+      });
+    };
+
+    const last30 = compareWindow(30);
+    const last90 = compareWindow(90);
 
     return {
-      opi,
-      poi30,
-      poi60,
-      poi90,
-      topClass: topClassEntry[0],
-      topClassPercentage,
-      classTrend,
-      complexityScore,
-      complexityTier,
-      contextualRisk,
-      sampleSize: source.length,
+      compositional30to90: (last30.length / (last90.length || 1)) * 100,
+      preventiveOpportunityIndex:
+        (last90.filter((a) => (a.arrival_context?.external_factors ?? []).includes("recommendation_not_followed")).length / (last90.length || 1)) * 100,
+      byState: stateOptions.map((option) => option.label),
     };
-  }, [alertsWithoutTimeLimit, filteredAlerts]);
+  }, [filteredAlerts, stateOptions]);
+
+  const scopeLabel = filters.macroRegion === "all" ? "Brasil" : MACRO_REGION_OPTIONS.find((o) => o.value === filters.macroRegion)?.label ?? "Brasil";
 
   if (status === "checking") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-700">Verificando acesso</p>
-          <p className="text-base text-slate-700">Confirmando sessão e perfil do veterinário...</p>
-        </Card>
-      </div>
-    );
+    return <div className="px-4 py-16 text-center text-slate-700">Confirmando acesso ao painel...</div>;
   }
 
   if (status === "restricted") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md space-y-3 p-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-700">Acesso restrito</p>
-          <p className="text-base text-slate-700">
-            Este painel é reservado a médicos-veterinários convidados. Verifique seu link de acesso ou tente novamente.
-          </p>
-        </Card>
-      </div>
-    );
+    return <div className="px-4 py-16 text-center text-slate-700">Acesso restrito para profissionais convidados.</div>;
   }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
-      <Card className="border-slate-200 bg-slate-50 p-6 text-sm text-slate-800">
-        <p>
-          Esta plataforma fornece análise agregada e observacional de registros clínicos.
-          <br />
-          Não substitui notificação oficial obrigatória, não exerce função de vigilância sanitária e não confirma diagnósticos.
-          <br />
-          Registros de suspeita de doenças de notificação obrigatória devem seguir o fluxo oficial previsto em lei.
-        </p>
-      </Card>
-
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Painel operacional veterinário</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Painel situacional de gestão clínica regional</h1>
-          <p className="max-w-3xl text-base text-slate-600">
-            Visão agregada para preparo de rotina, organização de condutas e leitura de contexto de manejo no estado selecionado.
-          </p>
-          <p className="text-xs text-slate-500">Escopo ativo: {getScopeLabel(filters.stateScope)}</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">VetAlert • painel clínico agregado</p>
+          <h1 className="text-3xl font-semibold text-slate-900">Radar clínico regional</h1>
+          <p className="max-w-3xl text-base text-slate-600">Visão assistencial despersonalizada para apoiar decisões de rotina e planejamento.</p>
+          <p className="text-xs text-slate-500">Escopo ativo: {scopeLabel}</p>
         </div>
         <Button href="/alerta/novo" className="bg-slate-700 text-white hover:bg-slate-800 focus-visible:outline-slate-700">
           Registrar novo sinal
         </Button>
       </section>
 
-      {registrationFlag && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-800">
-          Registro salvo com sucesso. Os indicadores foram atualizados para o período selecionado.
-        </div>
-      )}
-
-      <section className="grid gap-6 lg:grid-cols-[1fr,1fr]">
-        <MetricCard
-          title="Índice de Pressão Operacional Regional"
-          description="Composição percentual baseada em atendimento tardio, pressão econômica, desvio de protocolo e intervenção tardia."
-        >
-          <div className="flex items-center justify-between gap-4">
-            <Donut value={dashboardData.opi} />
-            <div className="w-full space-y-3 text-sm text-slate-600">
-              <p>Leitura consolidada para priorização de preparo assistencial em campo.</p>
-              <ProgressBar value={dashboardData.opi} />
-            </div>
-          </div>
-        </MetricCard>
-
-        <MetricCard
-          title="Indicador de Oportunidades Preventivas"
-          description="Percentual de oportunidades associadas a conduta preventiva, calendário, alimentação e recorrência terapêutica."
-        >
-          <div className="space-y-3">
-            {[
-              { label: "30 dias", value: dashboardData.poi30 },
-              { label: "60 dias", value: dashboardData.poi60 },
-              { label: "90 dias", value: dashboardData.poi90 },
-            ].map((item) => (
-              <div key={item.label} className="space-y-1">
-                <div className="flex items-center justify-between text-sm text-slate-700">
-                  <span>{item.label}</span>
-                  <span className="font-semibold">{formatPercent(item.value)}</span>
-                </div>
-                <ProgressBar value={item.value} />
-              </div>
-            ))}
-          </div>
-        </MetricCard>
-
-        <MetricCard
-          title="Padrões Terapêuticos Agregados"
-          description="Sinalização consolidada por classe terapêutica, sem associação a condição específica."
-        >
-          <div className="space-y-3 text-sm">
-            <div className="rounded-xl bg-slate-50 p-3 text-slate-700">
-              Distribuição terapêutica predominante: <span className="font-semibold text-slate-900">{dashboardData.topClass}</span> ({formatPercent(dashboardData.topClassPercentage)})
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3 text-slate-700">
-              Variação estatística de recorrência: <span className="font-semibold text-slate-900">{dashboardData.classTrend >= 0 ? "↑" : "↓"} {formatPercent(Math.abs(dashboardData.classTrend))}</span> em relação à base de 90 dias.
-            </div>
-          </div>
-        </MetricCard>
-
-        <MetricCard
-          title="Nível Médio de Complexidade dos Atendimentos"
-          description="Composição baseada em multifatores de manejo, contexto de intervenção e variáveis ambientais."
-        >
-          <div className="space-y-3">
-            <div className="flex items-end justify-between">
-              <p className="text-sm text-slate-600">Faixa atual</p>
-              <p className="text-2xl font-semibold text-slate-900">{dashboardData.complexityTier}</p>
-            </div>
-            <ProgressBar value={dashboardData.complexityScore} />
-            <div className="grid grid-cols-3 text-xs text-slate-500">
-              <span>Baixo</span>
-              <span className="text-center">Moderado</span>
-              <span className="text-right">Elevado</span>
-            </div>
-          </div>
-        </MetricCard>
+      <section className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setLayer("clinical")} className={`rounded-full border px-4 py-2 text-sm font-semibold ${layer === "clinical" ? "border-slate-500 bg-slate-100" : "border-slate-200"}`}>
+          Clinical Radar View
+        </button>
+        <button type="button" onClick={() => setLayer("strategic")} className={`rounded-full border px-4 py-2 text-sm font-semibold ${layer === "strategic" ? "border-slate-500 bg-slate-100" : "border-slate-200"}`}>
+          Strategic Intelligence View
+        </button>
       </section>
 
-      <section>
-        <Card className="space-y-5 p-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contexto de Manejo e Ambiente</p>
-            <p className="text-sm text-slate-600">Fatores contextuais agregados para planejamento de rotina clínica.</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Transporte recente", value: dashboardData.contextualRisk.transporteRecente },
-              { label: "Mudança alimentar", value: dashboardData.contextualRisk.mudancaAlimentar },
-              { label: "Alta carga parasitária relatada", value: dashboardData.contextualRisk.altaCargaParasitaria },
-              { label: "Pressão econômica relatada", value: dashboardData.contextualRisk.pressaoEconomica },
-            ].map((item) => (
-              <div key={item.label} className="space-y-2 rounded-xl border border-slate-200 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
-                <p className="text-2xl font-semibold text-slate-900">{formatPercent(item.value)}</p>
-                <ProgressBar value={item.value} />
-              </div>
-            ))}
-          </div>
-        </Card>
-      </section>
+      {registrationFlag && <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-800">Registro salvo. O painel foi atualizado.</div>}
 
       <section className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
         <Card className="p-6">
@@ -555,17 +365,121 @@ export function DashboardVetPanel() {
             regionIBGEOptions={[]}
             severityOptions={severityOptions}
             timeWindowOptions={timeWindowOptions}
+            macroRegionOptions={MACRO_REGION_OPTIONS as { value: string; label: string }[]}
+            stateOptions={stateOptions}
+            showStateOptions={showStateOptions}
           />
         </Card>
+
         <Card className="space-y-3 p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cobertura do painel</p>
-          <p className="text-sm text-slate-700">Indicadores calculados no escopo ativo, sempre em formato agregado e despersonalizado.</p>
-          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-            Registros considerados na agregação atual: <span className="font-semibold">{dashboardData.sampleSize}</span>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nota de uso</p>
+          <p className="text-sm text-slate-700">Indicadores exibidos somente em formato agregado e despersonalizado.</p>
+          <p className="text-sm text-slate-700">O contexto apresentado busca apoiar a prática clínica com linguagem neutra e colaborativa.</p>
           {profile?.state && <p className="text-xs text-slate-500">Perfil autenticado com base principal em {profile.state}.</p>}
         </Card>
       </section>
+
+      {layer === "clinical" && (
+        <section className="grid gap-6 lg:grid-cols-2">
+          <Card className="space-y-4 p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Block 1</p>
+            <p className="text-sm text-slate-600">Perfis clínicos predominantes no período selecionado.</p>
+            <div className="flex items-center gap-4">
+              <Donut data={dashboardData.profileDistribution.slice(0, 5)} />
+              <div className="w-full space-y-2">
+                {dashboardData.profileDistribution.slice(0, 4).map((item) => (
+                  <div key={item.label} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm text-slate-700">
+                      <span>{item.label}</span>
+                      <span className="font-semibold">{formatPercent(item.value)}</span>
+                    </div>
+                    <ProgressBar value={item.value} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Block 2</p>
+            <p className="text-sm text-slate-700">Contexto assistencial regional (dados agregados)</p>
+            <p className="text-xs text-slate-500">Indicadores consolidados que refletem desafios compartilhados da rotina assistencial.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { label: "Atendimento em estágio avançado", value: dashboardData.sharedContext.atendimentoTardio },
+                { label: "Limitação de adesão terapêutica", value: dashboardData.sharedContext.adesaoTerapeutica },
+                { label: "Mudanças recentes de manejo", value: dashboardData.sharedContext.mudancasManejo },
+                { label: "Alta carga parasitária relatada", value: dashboardData.sharedContext.cargaParasitaria },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">{formatPercent(item.value)}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Block 3</p>
+            <p className="text-sm text-slate-600">Classes terapêuticas mais mencionadas no período.</p>
+            <div className="space-y-2">
+              {dashboardData.therapeuticDistribution.slice(0, 5).map((item) => (
+                <div key={item.label} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm text-slate-700">
+                    <span>{item.label}</span>
+                    <span className="font-semibold">{formatPercent(item.value)}</span>
+                  </div>
+                  <ProgressBar value={item.value} />
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Block 4</p>
+            <div className="flex items-end justify-between">
+              <p className="text-sm text-slate-600">Nível médio de complexidade</p>
+              <p className="text-2xl font-semibold text-slate-900">{dashboardData.complexityTier}</p>
+            </div>
+            <ProgressBar value={dashboardData.complexityScore} />
+          </Card>
+        </section>
+      )}
+
+      {layer === "strategic" && (
+        <section className="grid gap-6 lg:grid-cols-2">
+          {!STRATEGIC_ACCESS ? (
+            <Card className="p-6 lg:col-span-2">
+              <p className="text-sm font-semibold text-slate-800">Strategic Intelligence View com acesso controlado.</p>
+              <p className="mt-2 text-sm text-slate-600">Solicite habilitação para visualizar comparativos agregados de planejamento.</p>
+            </Card>
+          ) : (
+            <>
+              <Card className="space-y-2 p-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Comparação composicional</p>
+                <p className="text-sm text-slate-700">Participação relativa de 30 dias na composição ampliada: {formatPercent(strategicData.compositional30to90)}.</p>
+              </Card>
+              <Card className="space-y-2 p-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Comparativo interestadual agregado</p>
+                <p className="text-sm text-slate-700">Estados com base mínima no recorte atual: {strategicData.byState.join(", ") || "-"}.</p>
+              </Card>
+              <Card className="space-y-2 p-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Índice de oportunidade preventiva</p>
+                <p className="text-2xl font-semibold text-slate-900">{formatPercent(strategicData.preventiveOpportunityIndex)}</p>
+              </Card>
+              <Card className="space-y-2 p-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Indicadores de planejamento operacional</p>
+                <p className="text-sm text-slate-700">Leitura orientada a planejamento assistencial em escala agregada.</p>
+                <p className="text-sm text-slate-700">Sem exibição de microcontagens ou recortes identificáveis.</p>
+              </Card>
+            </>
+          )}
+        </section>
+      )}
+
+      <Card className="border-slate-200 bg-slate-50 p-6 text-sm text-slate-800">
+        Esta plataforma fornece análise agregada e observacional de registros clínicos despersonalizados. Não confirma diagnósticos e não substitui fluxos oficiais previstos em lei.
+      </Card>
     </div>
   );
 }
