@@ -54,6 +54,7 @@ const alertCategories = [
       "Suspeita de intoxicação",
       "Contaminação de água",
       "Contaminação ou mudança abrupta de ração/alimento",
+      "Uso de aditivos alimentares (registro observacional)",
       "Pulverização aérea próxima",
       "Queimadas / fumaça",
       "Enchentes, secas ou eventos climáticos extremos",
@@ -183,6 +184,7 @@ const detailOptions: Record<string, string[]> = {
 };
 
 const parasiteAlertType = "Quadro parasitário / falha de controle parasitário";
+const additiveUsageAlertType = "Uso de aditivos alimentares (registro observacional)";
 const physicalIntegrityOtherAlertType =
   "Outro indicador físico observacional (campo estruturado limitado a 100 caracteres)";
 const parasiteObservationOptions = [
@@ -322,6 +324,10 @@ export default function AlertFormClient() {
   const [parasiteObservationOption, setParasiteObservationOption] = useState("");
   const [parasiteObservationNote, setParasiteObservationNote] = useState("");
   const [physicalIntegrityObservationNote, setPhysicalIntegrityObservationNote] = useState("");
+  const [classeAditivo, setClasseAditivo] = useState("");
+  const [principioAtivo, setPrincipioAtivo] = useState("");
+  const [principioAtivoOutro, setPrincipioAtivoOutro] = useState("");
+  const [contextoUso, setContextoUso] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -447,6 +453,10 @@ export default function AlertFormClient() {
     setParasiteObservationOption("");
     setParasiteObservationNote("");
     setPhysicalIntegrityObservationNote("");
+    setClasseAditivo("");
+    setPrincipioAtivo("");
+    setPrincipioAtivoOutro("");
+    setContextoUso("");
     setErrors([]);
   };
 
@@ -470,6 +480,21 @@ export default function AlertFormClient() {
     if (alertType !== physicalIntegrityOtherAlertType) return "";
     return physicalIntegrityObservationNote.trim().slice(0, 100);
   }, [alertType, physicalIntegrityObservationNote]);
+
+  const additivePrincipioAtivoValue = useMemo(() => {
+    if (principioAtivo !== "Outro") return principioAtivo;
+    const trimmed = principioAtivoOutro.trim().slice(0, 50);
+    return trimmed ? `Outro: ${trimmed}` : "Outro";
+  }, [principioAtivo, principioAtivoOutro]);
+
+  const additiveAlertDetails = useMemo(() => {
+    if (alertType !== additiveUsageAlertType) return alertDetails;
+    const details: string[] = [];
+    if (classeAditivo) details.push(`Classe de aditivo: ${classeAditivo}`);
+    if (additivePrincipioAtivoValue) details.push(`Princípio ativo: ${additivePrincipioAtivoValue}`);
+    if (contextoUso) details.push(`Contexto de uso: ${contextoUso}`);
+    return details;
+  }, [additivePrincipioAtivoValue, alertDetails, alertType, classeAditivo, contextoUso]);
 
   const validateCurrentStep = () => {
     const missing: string[] = [];
@@ -547,7 +572,7 @@ export default function AlertFormClient() {
         // Mantém o fluxo e a gravação no Firestore iguais; apenas adiciona dados opcionais quando preenchidos.
         arrival_context: arrivalContext,
         context: {
-          alertDetails,
+          alertDetails: additiveAlertDetails,
           notes: notes.trim() ? notes.trim() : "",
           eventOnset,
           recentChanges,
@@ -857,7 +882,7 @@ export default function AlertFormClient() {
                       );
                     })}
                 </div>
-                {detailOptions[alertType]?.length ? (
+                {alertType !== additiveUsageAlertType && detailOptions[alertType]?.length ? (
                   <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Detalhe rápido (opcional)
@@ -892,6 +917,67 @@ export default function AlertFormClient() {
                     </div>
                   </div>
                 ) : null}
+
+                {alertType === additiveUsageAlertType && (
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-slate-900">Registro observacional estruturado</p>
+                      <p className="text-xs text-slate-600">
+                        Campos agregados para leitura estatística de uso de aditivos alimentares.
+                      </p>
+                    </div>
+                    <Select
+                      name="classeAditivo"
+                      label="Classe de aditivo"
+                      value={classeAditivo}
+                      onChange={(event) => setClasseAditivo(event.target.value)}
+                    >
+                      <option value="">Selecione (opcional)</option>
+                      <option value="Ionóforo">Ionóforo</option>
+                      <option value="Antimicrobiano promotor de crescimento">
+                        Antimicrobiano promotor de crescimento
+                      </option>
+                      <option value="Modulador ruminal">Modulador ruminal</option>
+                      <option value="Outro aditivo alimentar">Outro aditivo alimentar</option>
+                    </Select>
+                    <Select
+                      name="principioAtivo"
+                      label="Princípio ativo"
+                      value={principioAtivo}
+                      onChange={(event) => setPrincipioAtivo(event.target.value)}
+                    >
+                      <option value="">Selecione (opcional)</option>
+                      <option value="Virginiamicina">Virginiamicina</option>
+                      <option value="Monensina">Monensina</option>
+                      <option value="Salinomicina">Salinomicina</option>
+                      <option value="Tilosina">Tilosina</option>
+                      <option value="Outro">Outro (campo controlado, máximo 50 caracteres)</option>
+                    </Select>
+                    {principioAtivo === "Outro" && (
+                      <Input
+                        name="principioAtivoOutro"
+                        label="Outro princípio ativo (campo controlado)"
+                        value={principioAtivoOutro}
+                        onChange={(event) => setPrincipioAtivoOutro(event.target.value.slice(0, 50))}
+                        maxLength={50}
+                        helper="Máx. 50 caracteres."
+                      />
+                    )}
+                    <Select
+                      name="contextoUso"
+                      label="Contexto de uso"
+                      value={contextoUso}
+                      onChange={(event) => setContextoUso(event.target.value)}
+                    >
+                      <option value="">Selecione (opcional)</option>
+                      <option value="Uso contínuo">Uso contínuo</option>
+                      <option value="Uso em lote">Uso em lote</option>
+                      <option value="Uso preventivo">Uso preventivo</option>
+                      <option value="Uso terapêutico">Uso terapêutico</option>
+                      <option value="Não informado">Não informado</option>
+                    </Select>
+                  </div>
+                )}
 
                 {alertType === parasiteAlertType && (
                   <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
@@ -1489,7 +1575,7 @@ export default function AlertFormClient() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sinal e espécie</p>
                     <ul className="space-y-1">
                       <li>• Sinal: {alertType || "—"}</li>
-                      {alertDetails.length > 0 && <li>• Detalhes: {alertDetails.join(", ")}</li>}
+                      {additiveAlertDetails.length > 0 && <li>• Detalhes: {additiveAlertDetails.join(", ")}</li>}
                       {parasiteObservationValue && (
                         <li>• Observação descritiva: {parasiteObservationValue}</li>
                       )}
