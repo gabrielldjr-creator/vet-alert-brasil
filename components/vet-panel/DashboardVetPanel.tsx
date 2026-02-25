@@ -32,6 +32,8 @@ const timeWindowOptions = [
   { value: "90d", label: "Período selecionado (90 dias)" },
 ];
 
+const additiveUsageAlertType = "Uso de aditivos alimentares (registro observacional)";
+
 const getAlertTimestamp = (alert: AlertRecord) => {
   return alert.createdAt?.toDate?.() ?? alert.timestamp?.toDate?.();
 };
@@ -49,6 +51,12 @@ const includesValue = (value: string[] | string | undefined, expected: string) =
 const asArray = (value: string[] | string | undefined) => {
   if (!value) return [] as string[];
   return Array.isArray(value) ? value : [value];
+};
+
+const getDetailValue = (details: string[] | undefined, label: string) => {
+  const normalizedLabel = `${label.toLowerCase()}:`;
+  const match = (details ?? []).find((detail) => detail.toLowerCase().startsWith(normalizedLabel));
+  return match ? match.slice(match.indexOf(":") + 1).trim() : "";
 };
 
 const clamp = (value: number) => Math.max(0, Math.min(100, value));
@@ -382,6 +390,64 @@ export function DashboardVetPanel() {
         (source.filter((alert) => (alert.arrival_context?.external_factors ?? []).includes("financial_limitation")).length / total) * 100,
     };
 
+    const additiveSource = source.filter((alert) => alert.alertType === additiveUsageAlertType);
+    const additiveTotal = additiveSource.length;
+
+    const additiveClassFrequency = additiveSource.reduce<Record<string, number>>((acc, alert) => {
+      const classe = getDetailValue(alert.context?.alertDetails, "Classe de aditivo") || "Não informado";
+      acc[classe] = (acc[classe] || 0) + 1;
+      return acc;
+    }, {});
+
+    const additivePrincipleFrequency = additiveSource.reduce<Record<string, number>>((acc, alert) => {
+      const principle = getDetailValue(alert.context?.alertDetails, "Princípio ativo") || "Não informado";
+      acc[principle] = (acc[principle] || 0) + 1;
+      return acc;
+    }, {});
+
+    const additiveClassDistribution = Object.entries(additiveClassFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({
+        label,
+        value: additiveTotal > 0 ? (count / additiveTotal) * 100 : 0,
+      }));
+
+    const additivePrincipleDistribution = Object.entries(additivePrincipleFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({
+        label,
+        value: additiveTotal > 0 ? (count / additiveTotal) * 100 : 0,
+      }));
+
+    const additiveTrend = (() => {
+      if (additiveTotal === 0) return 0;
+      const now = new Date();
+      const cutoffCurrent = new Date(now);
+      const cutoffPrevious = new Date(now);
+      const windowDays = filters.timeWindow === "7d" ? 7 : filters.timeWindow === "30d" ? 30 : 90;
+      cutoffCurrent.setDate(cutoffCurrent.getDate() - windowDays);
+      cutoffPrevious.setDate(cutoffPrevious.getDate() - windowDays * 2);
+
+      const scopedAdditive = alertsWithoutTimeLimit.filter((alert) => alert.alertType === additiveUsageAlertType);
+      const currentWindow = scopedAdditive.filter((alert) => {
+        const timestamp = getAlertTimestamp(alert);
+        return timestamp ? timestamp >= cutoffCurrent : false;
+      });
+      const previousWindow = scopedAdditive.filter((alert) => {
+        const timestamp = getAlertTimestamp(alert);
+        return timestamp ? timestamp >= cutoffPrevious && timestamp < cutoffCurrent : false;
+      });
+
+      const currentRate = alertsWithoutTimeLimit.length ? (currentWindow.length / alertsWithoutTimeLimit.length) * 100 : 0;
+      const previousBase = alertsWithoutTimeLimit.filter((alert) => {
+        const timestamp = getAlertTimestamp(alert);
+        return timestamp ? timestamp >= cutoffPrevious && timestamp < cutoffCurrent : false;
+      });
+      const previousRate = previousBase.length ? (previousWindow.length / previousBase.length) * 100 : 0;
+
+      return currentRate - previousRate;
+    })();
+
     return {
       opi,
       poi30,
@@ -393,9 +459,13 @@ export function DashboardVetPanel() {
       complexityScore,
       complexityTier,
       contextualRisk,
+      additiveClassDistribution,
+      additivePrincipleDistribution,
+      additiveTrend,
+      additiveTotal,
       sampleSize: source.length,
     };
-  }, [alertsWithoutTimeLimit, filteredAlerts]);
+  }, [alertsWithoutTimeLimit, filteredAlerts, filters.timeWindow]);
 
   if (status === "checking") {
     return (
@@ -519,6 +589,58 @@ export function DashboardVetPanel() {
             </div>
           </div>
         </MetricCard>
+      </section>
+
+      <section>
+        <Card className="space-y-5 p-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Indicadores agregados de uso de aditivos alimentares
+            </p>
+            <p className="text-sm text-slate-600">
+              Registros agregados de uso de aditivos alimentares em contextos clínicos e de manejo, apresentados de forma estatística e não diagnóstica.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+              <p className="text-sm font-semibold text-slate-900">Distribuição percentual de aditivos observados</p>
+              {dashboardData.additiveClassDistribution.length === 0 ? (
+                <p className="text-sm text-slate-600">Sem registros no período selecionado.</p>
+              ) : (
+                dashboardData.additiveClassDistribution.map((item) => (
+                  <div key={item.label} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm text-slate-700">
+                      <span>{item.label}</span>
+                      <span className="font-semibold">{formatPercent(item.value)}</span>
+                    </div>
+                    <ProgressBar value={item.value} />
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+              <p className="text-sm font-semibold text-slate-900">Tendência de uso de princípios ativos (período selecionado)</p>
+              {dashboardData.additivePrincipleDistribution.length === 0 ? (
+                <p className="text-sm text-slate-600">Sem registros no período selecionado.</p>
+              ) : (
+                dashboardData.additivePrincipleDistribution.map((item) => (
+                  <div key={item.label} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm text-slate-700">
+                      <span>{item.label}</span>
+                      <span className="font-semibold">{formatPercent(item.value)}</span>
+                    </div>
+                    <ProgressBar value={item.value} />
+                  </div>
+                ))
+              )}
+              <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                Variação percentual entre períodos selecionados: <span className="font-semibold text-slate-900">{dashboardData.additiveTrend >= 0 ? "↑" : "↓"} {formatPercent(Math.abs(dashboardData.additiveTrend))}</span>
+              </div>
+            </div>
+          </div>
+        </Card>
       </section>
 
       <section>
