@@ -47,6 +47,22 @@ const toNumber = (value: unknown) => {
   return null;
 };
 
+const serializeAlert = (alert: AlertRecord) => {
+  const replacer = (_key: string, value: unknown) => {
+    if (value && typeof value === "object" && "toDate" in (value as Record<string, unknown>) && typeof (value as { toDate?: unknown }).toDate === "function") {
+      const date = (value as { toDate: () => Date }).toDate();
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
+    return value;
+  };
+
+  try {
+    return JSON.stringify(alert, replacer, 2);
+  } catch {
+    return "{}";
+  }
+};
+
 function DistributionBar({ value, max }: { value: number; max: number }) {
   const width = max > 0 ? (value / max) * 100 : 0;
   return (
@@ -234,6 +250,7 @@ export function GlobalAlertsDashboard() {
                     <th key={key} className="px-3 py-2"><button type="button" className="font-semibold" onClick={() => toggleSort(key)}>{label}</button></th>
                   ))}
                   <th className="px-3 py-2 font-semibold">Classificações / Tags</th>
+                  <th className="px-3 py-2 font-semibold">Registro completo</th>
                 </tr>
               </thead>
               <tbody>
@@ -250,6 +267,12 @@ export function GlobalAlertsDashboard() {
                       <td className="px-3 py-2"><p>Casos: {alert.cases ?? "-"}</p><p className="text-xs text-slate-500">Rebanho: {alert.herdCount ?? alert.context?.herdCountLabel ?? "-"}</p></td>
                       <td className="px-3 py-2"><p>Confiança: {record.confidenceScore ?? "-"}</p><p className="text-xs text-slate-500">Fonte: {record.source ?? "-"}</p></td>
                       <td className="px-3 py-2">{tags.length ? tags.join(" • ") : "-"}</td>
+                      <td className="px-3 py-2">
+                        <details>
+                          <summary className="cursor-pointer text-xs text-emerald-700">Ver todos os campos</summary>
+                          <pre className="mt-2 max-h-56 overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-700">{serializeAlert(alert)}</pre>
+                        </details>
+                      </td>
                     </tr>
                   );
                 })}
@@ -274,6 +297,10 @@ export function GlobalAlertsDashboard() {
                   <p className="text-xs text-slate-600">Confiança: {record.confidenceScore ?? "-"}</p>
                   <p className="text-xs text-slate-600">Fonte: {record.source ?? "-"}</p>
                   <p className="text-xs text-slate-600">Tags: {(alert.context?.alertDetails ?? []).join(" • ") || "-"}</p>
+                  <details>
+                    <summary className="cursor-pointer text-xs text-emerald-700">Ver todos os campos</summary>
+                    <pre className="mt-2 max-h-56 overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-700">{serializeAlert(alert)}</pre>
+                  </details>
                 </Card>
               );
             })}
