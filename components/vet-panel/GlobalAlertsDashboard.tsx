@@ -8,7 +8,7 @@ import { stateOptions } from "../../lib/regions";
 import { AlertRecord } from "./types";
 
 type RegionScope = "global" | "country" | "state";
-type TimeWindow = "7d" | "30d" | "custom";
+type TimeWindow = "7d" | "30d" | "90d" | "custom";
 type SortDirection = "asc" | "desc";
 type SortColumn = "region" | "state" | "species" | "alertType" | "riskLevel" | "cases" | "confidence";
 
@@ -29,7 +29,7 @@ const defaultFilters: FiltersState = {
   species: "",
   alertType: "",
   riskLevel: "",
-  timeWindow: "30d",
+  timeWindow: "90d",
   customStart: "",
   customEnd: "",
 };
@@ -49,7 +49,12 @@ const toNumber = (value: unknown) => {
 
 const serializeAlert = (alert: AlertRecord) => {
   const replacer = (_key: string, value: unknown) => {
-    if (value && typeof value === "object" && "toDate" in (value as Record<string, unknown>) && typeof (value as { toDate?: unknown }).toDate === "function") {
+    if (
+      value &&
+      typeof value === "object" &&
+      "toDate" in (value as Record<string, unknown>) &&
+      typeof (value as { toDate?: unknown }).toDate === "function"
+    ) {
       const date = (value as { toDate: () => Date }).toDate();
       return Number.isNaN(date.getTime()) ? null : date.toISOString();
     }
@@ -104,18 +109,24 @@ export function GlobalAlertsDashboard() {
     const cutoff = new Date(now);
     if (filters.timeWindow === "7d") cutoff.setDate(cutoff.getDate() - 7);
     if (filters.timeWindow === "30d") cutoff.setDate(cutoff.getDate() - 30);
+    if (filters.timeWindow === "90d") cutoff.setDate(cutoff.getDate() - 90);
 
     const start = filters.customStart ? new Date(`${filters.customStart}T00:00:00`) : null;
     const end = filters.customEnd ? new Date(`${filters.customEnd}T23:59:59`) : null;
 
     return alerts.filter((alert) => {
       const date = getAlertDate(alert);
-      if ((filters.timeWindow === "7d" || filters.timeWindow === "30d") && date && date < cutoff) return false;
+      if (["7d", "30d", "90d"].includes(filters.timeWindow) && date && date < cutoff) return false;
       if (filters.timeWindow === "custom") {
         if (start && date && date < start) return false;
         if (end && date && date > end) return false;
       }
-      if (filters.regionScope === "state" && filters.state && normalizeState(alert.state) !== normalizeState(filters.state)) return false;
+
+      if (filters.regionScope === "country") {
+        if (normalize(alert.context?.country || "brasil") !== "brasil") return false;
+      }
+
+      if (filters.state && normalizeState(alert.state) !== normalizeState(filters.state)) return false;
       if (filters.species && normalize(alert.species) !== normalize(filters.species)) return false;
       if (filters.alertType && normalize(alert.alertType) !== normalize(filters.alertType)) return false;
       if (filters.riskLevel && normalize(alert.severity) !== normalize(filters.riskLevel)) return false;
@@ -123,9 +134,18 @@ export function GlobalAlertsDashboard() {
     });
   }, [alerts, filters]);
 
-  const speciesOptions = useMemo(() => Array.from(new Set(alerts.map((a) => a.species).filter(Boolean) as string[])).sort(), [alerts]);
-  const alertTypeOptions = useMemo(() => Array.from(new Set(alerts.map((a) => a.alertType).filter(Boolean) as string[])).sort(), [alerts]);
-  const riskOptions = useMemo(() => Array.from(new Set(alerts.map((a) => a.severity).filter(Boolean) as string[])).sort(), [alerts]);
+  const speciesOptions = useMemo(
+    () => Array.from(new Set(alerts.map((a) => a.species).filter(Boolean) as string[])).sort(),
+    [alerts]
+  );
+  const alertTypeOptions = useMemo(
+    () => Array.from(new Set(alerts.map((a) => a.alertType).filter(Boolean) as string[])).sort(),
+    [alerts]
+  );
+  const riskOptions = useMemo(
+    () => Array.from(new Set(alerts.map((a) => a.severity).filter(Boolean) as string[])).sort(),
+    [alerts]
+  );
 
   const sortableAlerts = useMemo(() => {
     const rows = [...filteredAlerts];
@@ -161,22 +181,64 @@ export function GlobalAlertsDashboard() {
     return rows;
   }, [filteredAlerts, sortBy, sortDirection]);
 
-  const aggregations = useMemo(() => {
+  const analytics = useMemo(() => {
     const countBy = (key: (a: AlertRecord) => string) => {
       const result = new Map<string, number>();
       filteredAlerts.forEach((alert) => {
         const value = key(alert) || "Não informado";
         result.set(value, (result.get(value) ?? 0) + 1);
       });
-      return Array.from(result.entries()).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+      return Array.from(result.entries())
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
     };
 
+    const countByList = (extractor: (a: AlertRecord) => string[]) => {
+      const result = new Map<string, number>();
+      filteredAlerts.forEach((alert) => {
+        extractor(alert)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .forEach((item) => {
+            result.set(item, (result.get(item) ?? 0) + 1);
+          });
+      });
+      return Array.from(result.entries())
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+    };
+
+    const totalCases = filteredAlerts.reduce((sum, alert) => sum + (alert.cases ?? 0), 0);
+
     return {
+      totals: {
+        registros: filteredAlerts.length,
+        estados: new Set(filteredAlerts.map((a) => a.state).filter(Boolean)).size,
+        especies: new Set(filteredAlerts.map((a) => a.species).filter(Boolean)).size,
+        tipos: new Set(filteredAlerts.map((a) => a.alertType).filter(Boolean)).size,
+        casos: totalCases,
+      },
       byRegion: countBy((a) => a.regionGroup ?? a.context?.country ?? "Global"),
       bySpecies: countBy((a) => a.species ?? "Não informado"),
       byAlertType: countBy((a) => a.alertType ?? "Não informado"),
       byRisk: countBy((a) => a.severity ?? "Não informado"),
       byState: countBy((a) => a.state ?? "Não informado"),
+      byMunicipality: countBy((a) => a.city ?? a.cityName ?? a.municipality ?? "Não informado"),
+      byAlertGroup: countBy((a) => a.alertGroup ?? "Não informado"),
+      byHerd: countBy((a) => a.herdCount ?? a.context?.herdCountLabel ?? "Não informado"),
+      byDetailTags: countByList((a) => a.context?.alertDetails ?? []),
+      byExternalFactors: countByList((a) => a.arrival_context?.external_factors ?? []),
+      byFeedType: countByList((a) => {
+        const value = a.context?.feed?.feedType;
+        if (!value) return [];
+        return Array.isArray(value) ? value : [value];
+      }),
+      byDrugCategory: countByList((a) => {
+        const value = a.context?.pharma?.drugCategory;
+        if (!value) return [];
+        return Array.isArray(value) ? value : [value];
+      }),
+      byEnvironmentSignals: countByList((a) => a.context?.environment?.environmentSignals ?? []),
     };
   }, [filteredAlerts]);
 
@@ -189,6 +251,21 @@ export function GlobalAlertsDashboard() {
     setSortDirection("asc");
   };
 
+  const miniPanels = [
+    { title: "Alertas por região", items: analytics.byRegion },
+    { title: "Alertas por espécie", items: analytics.bySpecies },
+    { title: "Alertas por tipo", items: analytics.byAlertType },
+    { title: "Alertas por risco", items: analytics.byRisk },
+    { title: "Alertas por município", items: analytics.byMunicipality },
+    { title: "Alertas por grupo", items: analytics.byAlertGroup },
+    { title: "Alertas por rebanho", items: analytics.byHerd },
+    { title: "Tags de classificação", items: analytics.byDetailTags },
+    { title: "Fatores externos", items: analytics.byExternalFactors },
+    { title: "Tipo de alimentação", items: analytics.byFeedType },
+    { title: "Categoria farmacológica", items: analytics.byDrugCategory },
+    { title: "Sinais ambientais", items: analytics.byEnvironmentSignals },
+  ];
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10">
       <header className="space-y-2">
@@ -196,33 +273,123 @@ export function GlobalAlertsDashboard() {
         <p className="text-base text-slate-600">Dados sanitários estruturados por região, espécie e classificação</p>
       </header>
 
+      <Card className="border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        Pilotos em andamento: Santa Catarina. Próximas ativações planejadas: Mato Grosso e Minas Gerais em 20 de abril de 2026.
+      </Card>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {[{ label: "Registros", value: analytics.totals.registros }, { label: "Estados cobertos", value: analytics.totals.estados }, { label: "Espécies", value: analytics.totals.especies }, { label: "Tipos de alerta", value: analytics.totals.tipos }, { label: "Casos informados", value: analytics.totals.casos }].map((kpi) => (
+          <Card key={kpi.label} className="p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{kpi.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{kpi.value}</p>
+          </Card>
+        ))}
+      </section>
+
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <label className="space-y-1 text-sm text-slate-700"><span>Região</span><select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.regionScope} onChange={(e) => setFilters((p) => ({ ...p, regionScope: e.target.value as RegionScope }))}><option value="global">Global</option><option value="country">País</option><option value="state">Estado</option></select></label>
-          <label className="space-y-1 text-sm text-slate-700"><span>Estado</span><select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 disabled:bg-slate-50" value={filters.state} onChange={(e) => setFilters((p) => ({ ...p, state: e.target.value }))} disabled={filters.regionScope !== "state"}><option value="">Todos</option>{stateOptions.map((state) => <option key={state} value={state}>{state}</option>)}</select></label>
-          <label className="space-y-1 text-sm text-slate-700"><span>Espécie</span><select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.species} onChange={(e) => setFilters((p) => ({ ...p, species: e.target.value }))}><option value="">Todas</option>{speciesOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label className="space-y-1 text-sm text-slate-700"><span>Tipo de alerta</span><select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.alertType} onChange={(e) => setFilters((p) => ({ ...p, alertType: e.target.value }))}><option value="">Todos</option>{alertTypeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label className="space-y-1 text-sm text-slate-700"><span>Nível de risco</span><select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.riskLevel} onChange={(e) => setFilters((p) => ({ ...p, riskLevel: e.target.value }))}><option value="">Todos</option>{riskOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label className="space-y-1 text-sm text-slate-700"><span>Janela de tempo</span><select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.timeWindow} onChange={(e) => setFilters((p) => ({ ...p, timeWindow: e.target.value as TimeWindow }))}><option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option><option value="custom">Período personalizado</option></select></label>
+          <label className="space-y-1 text-sm text-slate-700">
+            <span>Região</span>
+            <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.regionScope} onChange={(e) => setFilters((p) => ({ ...p, regionScope: e.target.value as RegionScope }))}>
+              <option value="global">Global</option>
+              <option value="country">País (Brasil)</option>
+              <option value="state">Estado</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-slate-700">
+            <span>Estado</span>
+            <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.state} onChange={(e) => setFilters((p) => ({ ...p, state: e.target.value }))}>
+              <option value="">Todos</option>
+              {stateOptions.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-slate-700">
+            <span>Espécie</span>
+            <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.species} onChange={(e) => setFilters((p) => ({ ...p, species: e.target.value }))}>
+              <option value="">Todas</option>
+              {speciesOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-slate-700">
+            <span>Tipo de alerta</span>
+            <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.alertType} onChange={(e) => setFilters((p) => ({ ...p, alertType: e.target.value }))}>
+              <option value="">Todos</option>
+              {alertTypeOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-slate-700">
+            <span>Nível de risco</span>
+            <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.riskLevel} onChange={(e) => setFilters((p) => ({ ...p, riskLevel: e.target.value }))}>
+              <option value="">Todos</option>
+              {riskOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-slate-700">
+            <span>Janela de tempo</span>
+            <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.timeWindow} onChange={(e) => setFilters((p) => ({ ...p, timeWindow: e.target.value as TimeWindow }))}>
+              <option value="7d">Últimos 7 dias</option>
+              <option value="30d">Últimos 30 dias</option>
+              <option value="90d">Últimos 90 dias</option>
+              <option value="custom">Período personalizado</option>
+            </select>
+          </label>
         </div>
 
         {filters.timeWindow === "custom" && (
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="space-y-1 text-sm text-slate-700"><span>Data inicial</span><input type="date" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.customStart} onChange={(e) => setFilters((p) => ({ ...p, customStart: e.target.value }))} /></label>
-            <label className="space-y-1 text-sm text-slate-700"><span>Data final</span><input type="date" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.customEnd} onChange={(e) => setFilters((p) => ({ ...p, customEnd: e.target.value }))} /></label>
+            <label className="space-y-1 text-sm text-slate-700">
+              <span>Data inicial</span>
+              <input type="date" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.customStart} onChange={(e) => setFilters((p) => ({ ...p, customStart: e.target.value }))} />
+            </label>
+            <label className="space-y-1 text-sm text-slate-700">
+              <span>Data final</span>
+              <input type="date" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.customEnd} onChange={(e) => setFilters((p) => ({ ...p, customEnd: e.target.value }))} />
+            </label>
           </div>
         )}
       </Card>
 
       <section className="grid gap-4 lg:grid-cols-4">
-        {[{ title: "Alertas por região", items: aggregations.byRegion.slice(0, 5) }, { title: "Alertas por espécie", items: aggregations.bySpecies.slice(0, 5) }, { title: "Alertas por tipo", items: aggregations.byAlertType.slice(0, 5) }, { title: "Alertas por risco", items: aggregations.byRisk.slice(0, 5) }].map((panel) => {
-          const max = Math.max(...panel.items.map((i) => i.value), 0);
+        {miniPanels.map((panel) => {
+          const items = panel.items.slice(0, 5);
+          const max = Math.max(...items.map((i) => i.value), 0);
           return (
             <Card key={panel.title} className="space-y-3 p-4">
               <p className="text-sm font-semibold text-slate-900">{panel.title}</p>
-              {panel.items.length === 0 ? <p className="text-sm text-slate-500">Sem dados no período selecionado.</p> : panel.items.map((item) => (
-                <div key={item.label} className="space-y-1"><div className="flex items-center justify-between text-xs text-slate-700"><span className="truncate pr-2">{item.label}</span><span>{item.value}</span></div><DistributionBar value={item.value} max={max} /></div>
-              ))}
+              {items.length === 0 ? (
+                <p className="text-sm text-slate-500">Sem dados no período selecionado.</p>
+              ) : (
+                items.map((item) => (
+                  <div key={item.label} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-slate-700">
+                      <span className="truncate pr-2">{item.label}</span>
+                      <span>{item.value}</span>
+                    </div>
+                    <DistributionBar value={item.value} max={max} />
+                  </div>
+                ))
+              )}
             </Card>
           );
         })}
@@ -232,22 +399,40 @@ export function GlobalAlertsDashboard() {
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm text-slate-700">Registros no período selecionado: {sortableAlerts.length}</p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setViewMode("table")} className={`rounded-lg border px-3 py-1.5 text-sm ${viewMode === "table" ? "border-emerald-500 bg-emerald-50" : "border-slate-200"}`}>Tabela</button>
-            <button type="button" onClick={() => setViewMode("cards")} className={`rounded-lg border px-3 py-1.5 text-sm ${viewMode === "cards" ? "border-emerald-500 bg-emerald-50" : "border-slate-200"}`}>Cards</button>
+            <button type="button" onClick={() => setViewMode("table")} className={`rounded-lg border px-3 py-1.5 text-sm ${viewMode === "table" ? "border-emerald-500 bg-emerald-50" : "border-slate-200"}`}>
+              Tabela
+            </button>
+            <button type="button" onClick={() => setViewMode("cards")} className={`rounded-lg border px-3 py-1.5 text-sm ${viewMode === "cards" ? "border-emerald-500 bg-emerald-50" : "border-slate-200"}`}>
+              Cards
+            </button>
           </div>
         </div>
 
         {loadState === "loading" && <p className="text-sm text-slate-600">Carregando dados...</p>}
         {loadState === "error" && <p className="text-sm text-red-700">Erro ao carregar dados.</p>}
-        {loadState === "ready" && sortableAlerts.length === 0 && <p className="text-sm text-slate-600">Nenhum alerta encontrado para os filtros selecionados.</p>}
+        {loadState === "ready" && sortableAlerts.length === 0 && (
+          <p className="text-sm text-slate-600">Nenhum alerta encontrado para os filtros selecionados.</p>
+        )}
 
         {loadState === "ready" && sortableAlerts.length > 0 && viewMode === "table" && (
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                  {[ ["region", "Região / País"] as const, ["state", "Estado / Localização"] as const, ["species", "Espécie"] as const, ["alertType", "Tipo de alerta"] as const, ["riskLevel", "Nível de risco"] as const, ["cases", "Contagens / Métricas"] as const, ["confidence", "Confiança / Fonte"] as const ].map(([key, label]) => (
-                    <th key={key} className="px-3 py-2"><button type="button" className="font-semibold" onClick={() => toggleSort(key)}>{label}</button></th>
+                  {[
+                    ["region", "Região / País"] as const,
+                    ["state", "Estado / Localização"] as const,
+                    ["species", "Espécie"] as const,
+                    ["alertType", "Tipo de alerta"] as const,
+                    ["riskLevel", "Nível de risco"] as const,
+                    ["cases", "Contagens / Métricas"] as const,
+                    ["confidence", "Confiança / Fonte"] as const,
+                  ].map(([key, label]) => (
+                    <th key={key} className="px-3 py-2">
+                      <button type="button" className="font-semibold" onClick={() => toggleSort(key)}>
+                        {label}
+                      </button>
+                    </th>
                   ))}
                   <th className="px-3 py-2 font-semibold">Classificações / Tags</th>
                   <th className="px-3 py-2 font-semibold">Registro completo</th>
@@ -260,12 +445,21 @@ export function GlobalAlertsDashboard() {
                   return (
                     <tr key={alert.id} className="border-b border-slate-100 align-top text-slate-700">
                       <td className="px-3 py-2">{alert.regionGroup ?? alert.context?.country ?? "Global"}</td>
-                      <td className="px-3 py-2"><p>{alert.state ?? "-"}</p><p className="text-xs text-slate-500">{alert.city ?? alert.cityName ?? alert.municipality ?? alert.localidadeAproximada ?? "-"}</p></td>
+                      <td className="px-3 py-2">
+                        <p>{alert.state ?? "-"}</p>
+                        <p className="text-xs text-slate-500">{alert.city ?? alert.cityName ?? alert.municipality ?? alert.localidadeAproximada ?? "-"}</p>
+                      </td>
                       <td className="px-3 py-2">{alert.species ?? "-"}</td>
                       <td className="px-3 py-2">{alert.alertType ?? "-"}</td>
                       <td className="px-3 py-2">{alert.severity ?? "-"}</td>
-                      <td className="px-3 py-2"><p>Casos: {alert.cases ?? "-"}</p><p className="text-xs text-slate-500">Rebanho: {alert.herdCount ?? alert.context?.herdCountLabel ?? "-"}</p></td>
-                      <td className="px-3 py-2"><p>Confiança: {record.confidenceScore ?? "-"}</p><p className="text-xs text-slate-500">Fonte: {record.source ?? "-"}</p></td>
+                      <td className="px-3 py-2">
+                        <p>Casos: {alert.cases ?? "-"}</p>
+                        <p className="text-xs text-slate-500">Rebanho: {alert.herdCount ?? alert.context?.herdCountLabel ?? "-"}</p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <p>Confiança: {record.confidenceScore ?? "-"}</p>
+                        <p className="text-xs text-slate-500">Fonte: {record.source ?? "-"}</p>
+                      </td>
                       <td className="px-3 py-2">{tags.length ? tags.join(" • ") : "-"}</td>
                       <td className="px-3 py-2">
                         <details>
@@ -311,7 +505,7 @@ export function GlobalAlertsDashboard() {
       <Card className="p-4">
         <p className="mb-3 text-sm font-semibold text-slate-900">Densidade geográfica (contagem por estado)</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          {aggregations.byState.map((entry) => (
+          {analytics.byState.map((entry) => (
             <div key={entry.label} className="rounded-lg border border-slate-200 p-2 text-xs text-slate-700">
               <p className="font-semibold">{entry.label}</p>
               <p>{entry.value}</p>
