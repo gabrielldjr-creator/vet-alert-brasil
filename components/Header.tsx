@@ -3,6 +3,7 @@ import Link from "next/link";
 
 const links = [
   { href: "/dashboard", label: "Painel" },
+  { href: "/global-alerts-dashboard", label: "Dashboard" },
 ];
 
 export function Header() {
