@@ -604,7 +604,7 @@ export default function AlertFormClient() {
         source: "pilot",
       });
 
-      router.push("/dashboard");
+      router.push("/global-alerts-dashboard");
     } catch (error) {
       console.error("Erro ao salvar registro:", error);
       setSubmitError("Erro ao salvar registro. Tente novamente.");
