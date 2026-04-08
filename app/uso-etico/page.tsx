@@ -4,7 +4,7 @@ import { Card } from "../../components/Card";
 export const metadata = {
   title: "Uso Ético dos Sinais Regionais do VetAlert | Vet Alert Brasil",
   description:
-    "Consciência clínica regional para prevenção responsável, com linguagem ética e não alarmista sobre sinais regionais.",
+    "Documento institucional sobre uso ético de sinais sanitários observacionais de múltiplas fontes no Vet Alert Brasil.",
 };
 
 export default function UsoEticoPage() {
@@ -13,141 +13,111 @@ export default function UsoEticoPage() {
       <header className="space-y-4">
         <h1 className="text-3xl font-semibold text-slate-900">Uso Ético dos Sinais Regionais do VetAlert</h1>
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-          Consciência clínica regional para prevenção responsável
+          Documento institucional de uso de dados sanitários observacionais
         </p>
         <p className="max-w-3xl text-base text-slate-700">
-          Esta página é aberta e informativa para médicos-veterinários. O conteúdo abaixo descreve limites e usos éticos de
-          sinais agregados, com linguagem técnica, calma e objetiva.
+          Esta página apresenta os princípios de uso da infraestrutura de sinais do Vet Alert Brasil, com linguagem
+          institucional, neutra e orientada à integridade informacional.
         </p>
       </header>
 
       <div className="space-y-6">
         <Card className="space-y-4 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">1. O que o VetAlert é — e o que não é</h2>
-          <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-            <li>O VetAlert é um painel de sinais regionais agregados, descritivos e observacionais.</li>
-            <li>O VetAlert oferece consciência clínica regional, não conclusões.</li>
-            <li>O VetAlert não é uma sirene.</li>
-            <li>O VetAlert não é um sistema de alarme.</li>
-            <li>O VetAlert não realiza diagnósticos.</li>
-            <li>O VetAlert não confirma concentrações de ocorrências.</li>
-          </ul>
-        </Card>
-
-        <Card className="space-y-4 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">2. O que os sinais regionais representam</h2>
+          <h2 className="text-xl font-semibold text-slate-900">1. Natureza do sistema</h2>
           <p className="text-sm text-slate-700">
-            Os sinais regionais descrevem padrões observacionais que ajudam a compor um cenário clínico regional. Eles indicam:
+            O Vet Alert Brasil opera como uma camada de infraestrutura de dados sanitários observacionais. O sistema integra,
+            organiza e disponibiliza sinais regionais de forma estruturada para leitura situacional.
           </p>
           <p className="text-sm text-slate-700">
-            Os sinais funcionam como um pulso clínico regional, não como confirmação de eventos.
-          </p>
-          <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-            <li>repetição de quadros em uma mesma região;</li>
-            <li>recorrência temporal de sinais semelhantes;</li>
-            <li>pressão clínica regional percebida por profissionais;</li>
-            <li>contexto situacional descritivo, sem confirmação de eventos.</li>
-          </ul>
-        </Card>
-
-        <Card className="space-y-4 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">
-            3. Como o médico-veterinário pode usar essa informação de forma ética
-          </h2>
-          <p className="text-sm text-slate-700">
-            Os sinais regionais podem apoiar a contextualização clínica, sempre com responsabilidade e sem extrapolações. Eles
-            ajudam a:
-          </p>
-          <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-            <li>contextualizar conversas com proprietários;</li>
-            <li>reforçar a consciência preventiva em períodos específicos;</li>
-            <li>antecipar ações responsáveis de manejo e observação.</li>
-          </ul>
-          <p className="text-sm text-slate-700">
-            O julgamento clínico individual é soberano. O VetAlert não substitui avaliação clínica nem orienta decisões
-            diagnósticas.
+            A arquitetura atual contempla duas camadas complementares de captação: sinais veterinários (clínicos) e sinais de
+            campo (comerciais de varejo agropecuário).
           </p>
         </Card>
 
         <Card className="space-y-4 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">4. Exemplos de linguagem segura com proprietários</h2>
-          <div className="space-y-3 text-sm text-slate-700">
-            <div>
-              <p className="font-semibold text-slate-900">Exemplos adequados</p>
-              <ul className="list-disc space-y-2 pl-5">
-                <li>“Estamos observando sinais semelhantes em outros pontos da região.”</li>
-                <li>“Este é um período que merece mais atenção preventiva.”</li>
-                <li>“Vale reforçar manejo e observação neste momento.”</li>
-              </ul>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">Exemplos inadequados (não utilizar)</p>
-              <ul className="list-disc space-y-2 pl-5">
-                <li>“Há uma concentração de ocorrências.”</li>
-                <li>“O VetAlert confirmou.”</li>
-                <li>“Isso prova que…”</li>
-              </ul>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="space-y-4 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">5. Prevenção como prática regional, não reação</h2>
+          <h2 className="text-xl font-semibold text-slate-900">2. O que os sinais representam</h2>
           <p className="text-sm text-slate-700">
-            Prevenção é uma prática contínua de antecipação, consciência situacional e ajustes de manejo, com responsabilidade
-            compartilhada entre profissionais e proprietários. A prevenção regional é um exercício de prudência, não de
-            precipitação.
+            Os sinais representam registros descritivos de observação em campo. Seu valor está na consolidação de contexto por
+            região, espécie e classificação, sem caráter confirmatório.
           </p>
           <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-            <li>Prevenção não é alarmismo.</li>
-            <li>Prevenção não é intervenção excessiva.</li>
+            <li>São dados observacionais e agregados.</li>
+            <li>Descrevem recorrências e distribuição de registros.</li>
+            <li>Permitem leitura de contexto sanitário em múltiplas fontes.</li>
           </ul>
         </Card>
 
         <Card className="space-y-4 p-6">
-          <h2 className="text-xl font-semibold text-slate-900">6. Limites éticos do uso do VetAlert</h2>
-          <p className="text-sm text-slate-700">O VetAlert não deve ser usado para:</p>
-          <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-            <li>gerar medo;</li>
-            <li>pressionar proprietários;</li>
-            <li>justificar procedimentos desnecessários;</li>
-            <li>substituir diagnóstico;</li>
-            <li>reivindicar autoridade.</li>
-          </ul>
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Responsabilidade profissional e sistemas oficiais</p>
-            <p>
-              O uso do VetAlert é complementar e não substitui o cumprimento das obrigações éticas, legais e técnicas do
-              médico-veterinário junto aos Conselhos Regionais e Federal, bem como aos órgãos municipais, estaduais e federais.
-            </p>
-            <p>Cada médico-veterinário permanece responsável por:</p>
-            <ul className="list-disc space-y-2 pl-5">
-              <li>investigação clínica e situacional adequada;</li>
-              <li>realização dos procedimentos diagnósticos pertinentes;</li>
-              <li>registro técnico fidedigno;</li>
-              <li>comunicação tempestiva ao fluxo oficial, quando obrigatória;</li>
-              <li>observância das normas, resoluções e programas oficiais vigentes.</li>
-            </ul>
-            <p>
-              O VetAlert não substitui fluxos oficiais, não confirma eventos de campo e não exime responsabilidades profissionais.
-            </p>
-          </div>
+          <h2 className="text-xl font-semibold text-slate-900">3. Uso responsável da informação</h2>
+          <p className="text-sm text-slate-700">
+            O uso responsável exige interpretação criteriosa por profissionais e instituições, com base em protocolos próprios,
+            evidências complementares e contexto local.
+          </p>
+          <p className="text-sm text-slate-700">
+            O sistema oferece uma base descritiva para monitoramento situacional, mantendo neutralidade analítica e transparência
+            sobre origem dos sinais.
+          </p>
+        </Card>
+
+        <Card className="space-y-4 p-6">
+          <h2 className="text-xl font-semibold text-slate-900">4. Limites do sistema</h2>
+          <p className="text-sm text-slate-700">
+            O Vet Alert Brasil não executa diagnóstico, não confirma ocorrência sanitária e não automatiza decisão de conduta.
+            As informações publicadas mantêm escopo observacional e estatístico.
+          </p>
+          <p className="text-sm text-slate-700">
+            A plataforma não substitui investigação técnica, notificação oficial obrigatória ou fluxos institucionais previstos
+            em norma.
+          </p>
+        </Card>
+
+        <Card className="space-y-4 p-6">
+          <h2 className="text-xl font-semibold text-slate-900">5. Comunicação responsável</h2>
+          <p className="text-sm text-slate-700">
+            A comunicação derivada dos sinais deve preservar precisão terminológica, sobriedade e ausência de alarmismo. A
+            linguagem recomendada é informativa, contextual e proporcional ao dado disponível.
+          </p>
+          <p className="text-sm text-slate-700">
+            Mensagens públicas ou privadas devem distinguir claramente registro observacional de confirmação técnica.
+          </p>
+        </Card>
+
+        <Card className="space-y-4 p-6">
+          <h2 className="text-xl font-semibold text-slate-900">6. Papel da prevenção</h2>
+          <p className="text-sm text-slate-700">
+            A prevenção, neste contexto, corresponde à preparação informada e contínua. Sinais regionais apoiam vigilância
+            situacional, planejamento operacional e priorização de acompanhamento técnico em campo.
+          </p>
+          <p className="text-sm text-slate-700">
+            O objetivo é ampliar a capacidade de leitura antecipada do ambiente sanitário, sem antecipar conclusões.
+          </p>
+        </Card>
+
+        <Card className="space-y-4 p-6">
+          <h2 className="text-xl font-semibold text-slate-900">7. Responsabilidade institucional</h2>
+          <p className="text-sm text-slate-700">
+            A governança do sistema está orientada por neutralidade, rastreabilidade, proteção de dados e uso ético da
+            informação. Cada instituição usuária permanece responsável por suas decisões e por conformidade regulatória.
+          </p>
+          <p className="text-sm text-slate-700">
+            O Vet Alert Brasil atua como infraestrutura de dados para leitura situacional multiorigem, mantendo posição técnica,
+            não interpretativa e institucional.
+          </p>
         </Card>
       </div>
 
       <Card className="space-y-5 p-6">
         <p className="text-sm text-slate-700">
-          O VetAlert não é uma sirene nem um sistema de alarme.
-          <br />
-          É um instrumento de consciência clínica regional que apoia o médico-veterinário na prevenção responsável.
+          O Vet Alert Brasil consolida sinais regionais de múltiplas camadas para ampliar visibilidade sanitária com precisão,
+          neutralidade e responsabilidade.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href="/alerta/novo"
             className="inline-flex flex-col items-center justify-center gap-1 rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
           >
-            <span>Registrar um sinal</span>
-            <span className="text-xs font-medium text-emerald-600">Check-in clínico rápido</span>
+            <span>Registrar Sinal Veterinário</span>
+            <span className="text-xs font-medium text-emerald-600">Camada clínica</span>
           </Link>
           <Link
             href="/global-alerts-dashboard"
