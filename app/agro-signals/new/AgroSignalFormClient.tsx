@@ -93,7 +93,7 @@ export default function AgroSignalFormClient() {
         species,
         alertType: symptom,
         severity: "Não classificado",
-        alertGroup: "Field Signal",
+        alertGroup: "Sinal de Campo",
         cases: null,
         herdCount: "Não informado",
         context: {
@@ -129,7 +129,7 @@ export default function AgroSignalFormClient() {
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
       <Card className="space-y-6 p-6">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Novo Field Signal</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Novo Sinal de Campo</h1>
           <p className="mt-1 text-sm text-slate-600">Registro comercial de sinal observado no ponto de venda.</p>
         </div>
 
@@ -195,8 +195,8 @@ export default function AgroSignalFormClient() {
           {error ? <p className="text-sm text-red-700">{error}</p> : null}
 
           <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Salvando..." : "Registrar Field Signal"}</Button>
-            <Button type="button" variant="secondary" href="/global-alerts-dashboard">Voltar ao Alerts Intelligence</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Salvando..." : "Registrar Sinal de Campo"}</Button>
+            <Button type="button" variant="secondary" href="/global-alerts-dashboard">Voltar à Inteligência de Alertas</Button>
           </div>
         </form>
       </Card>
