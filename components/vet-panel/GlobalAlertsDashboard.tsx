@@ -18,6 +18,7 @@ type FiltersState = {
   species: string;
   alertType: string;
   riskLevel: string;
+  sourceType: "all" | "veterinary" | "field_retail";
   timeWindow: TimeWindow;
   customStart: string;
   customEnd: string;
@@ -29,6 +30,7 @@ const defaultFilters: FiltersState = {
   species: "",
   alertType: "",
   riskLevel: "",
+  sourceType: "all",
   timeWindow: "90d",
   customStart: "",
   customEnd: "",
@@ -84,6 +86,7 @@ export function GlobalAlertsDashboard() {
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [sortBy, setSortBy] = useState<SortColumn>("region");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [selectedAlert, setSelectedAlert] = useState<AlertRecord | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, "alerts"), orderBy("createdAt", "desc"));
@@ -130,6 +133,8 @@ export function GlobalAlertsDashboard() {
       if (filters.species && normalize(alert.species) !== normalize(filters.species)) return false;
       if (filters.alertType && normalize(alert.alertType) !== normalize(filters.alertType)) return false;
       if (filters.riskLevel && normalize(alert.severity) !== normalize(filters.riskLevel)) return false;
+      if (filters.sourceType === "field_retail" && (alert as AlertRecord & { source?: string }).source !== "agro_retail") return false;
+      if (filters.sourceType === "veterinary" && (alert as AlertRecord & { source?: string }).source === "agro_retail") return false;
       return true;
     });
   }, [alerts, filters]);
@@ -273,9 +278,6 @@ export function GlobalAlertsDashboard() {
         <p className="text-base text-slate-600">Dados sanitários estruturados por região, espécie e classificação</p>
       </header>
 
-      <Card className="border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-        Pilotos em andamento: Santa Catarina. Próximas ativações planejadas: Mato Grosso e Minas Gerais em 20 de abril de 2026.
-      </Card>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[{ label: "Registros", value: analytics.totals.registros }, { label: "Estados cobertos", value: analytics.totals.estados }, { label: "Espécies", value: analytics.totals.especies }, { label: "Tipos de alerta", value: analytics.totals.tipos }, { label: "Casos informados", value: analytics.totals.casos }].map((kpi) => (
@@ -346,6 +348,15 @@ export function GlobalAlertsDashboard() {
           </label>
 
           <label className="space-y-1 text-sm text-slate-700">
+            <span>Fonte do sinal</span>
+            <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.sourceType} onChange={(e) => setFilters((p) => ({ ...p, sourceType: e.target.value as "all" | "veterinary" | "field_retail" }))}>
+              <option value="all">Todas</option>
+              <option value="veterinary">Veterinary Signal</option>
+              <option value="field_retail">Field Signal</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm text-slate-700">
             <span>Janela de tempo</span>
             <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.timeWindow} onChange={(e) => setFilters((p) => ({ ...p, timeWindow: e.target.value as TimeWindow }))}>
               <option value="7d">Últimos 7 dias</option>
@@ -384,7 +395,7 @@ export function GlobalAlertsDashboard() {
                   <div key={item.label} className="space-y-1">
                     <div className="flex items-center justify-between text-xs text-slate-700">
                       <span className="truncate pr-2">{item.label}</span>
-                      <span>{item.value}</span>
+                      <span>{item.value} ({sortableAlerts.length ? Math.round((item.value / sortableAlerts.length) * 100) : 0}%)</span>
                     </div>
                     <DistributionBar value={item.value} max={max} />
                   </div>
@@ -443,7 +454,11 @@ export function GlobalAlertsDashboard() {
                   const record = alert as AlertRecord & { confidenceScore?: number | string; source?: string };
                   const tags = alert.context?.alertDetails ?? [];
                   return (
-                    <tr key={alert.id} className="border-b border-slate-100 align-top text-slate-700">
+                    <tr
+                      key={alert.id}
+                      className="cursor-pointer border-b border-slate-100 align-top text-slate-700 transition hover:bg-emerald-50/40"
+                      onClick={() => setSelectedAlert(alert)}
+                    >
                       <td className="px-3 py-2">{alert.regionGroup ?? alert.context?.country ?? "Global"}</td>
                       <td className="px-3 py-2">
                         <p>{alert.state ?? "-"}</p>
@@ -462,7 +477,7 @@ export function GlobalAlertsDashboard() {
                       </td>
                       <td className="px-3 py-2">{tags.length ? tags.join(" • ") : "-"}</td>
                       <td className="px-3 py-2">
-                        <details>
+                        <details onClick={(e) => e.stopPropagation()}>
                           <summary className="cursor-pointer text-xs text-emerald-700">Ver todos os campos</summary>
                           <pre className="mt-2 max-h-56 overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-700">{serializeAlert(alert)}</pre>
                         </details>
@@ -480,7 +495,10 @@ export function GlobalAlertsDashboard() {
             {sortableAlerts.map((alert) => {
               const record = alert as AlertRecord & { confidenceScore?: number | string; source?: string };
               return (
-                <Card key={alert.id} className="space-y-2 border-slate-200 p-4">
+                <Card
+                  key={alert.id}
+                  className="space-y-2 border-slate-200 p-4 transition hover:border-emerald-200"
+                >
                   <p className="text-sm font-semibold text-slate-900">{alert.alertType ?? "-"}</p>
                   <p className="text-sm text-slate-700">{alert.species ?? "-"}</p>
                   <p className="text-xs text-slate-600">Região: {alert.regionGroup ?? alert.context?.country ?? "Global"}</p>
@@ -491,7 +509,14 @@ export function GlobalAlertsDashboard() {
                   <p className="text-xs text-slate-600">Confiança: {record.confidenceScore ?? "-"}</p>
                   <p className="text-xs text-slate-600">Fonte: {record.source ?? "-"}</p>
                   <p className="text-xs text-slate-600">Tags: {(alert.context?.alertDetails ?? []).join(" • ") || "-"}</p>
-                  <details>
+                  <button
+                    type="button"
+                    className="text-left text-xs font-semibold text-emerald-700"
+                    onClick={() => setSelectedAlert(alert)}
+                  >
+                    Abrir drill-down completo
+                  </button>
+                  <details onClick={(e) => e.stopPropagation()}>
                     <summary className="cursor-pointer text-xs text-emerald-700">Ver todos os campos</summary>
                     <pre className="mt-2 max-h-56 overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-700">{serializeAlert(alert)}</pre>
                   </details>
@@ -513,6 +538,20 @@ export function GlobalAlertsDashboard() {
           ))}
         </div>
       </Card>
+      {selectedAlert && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 p-4" onClick={() => setSelectedAlert(null)}>
+          <Card className="max-h-[85vh] w-full max-w-4xl overflow-hidden p-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">Drill-down do registro</p>
+              <button type="button" className="rounded border border-slate-200 px-2 py-1 text-xs" onClick={() => setSelectedAlert(null)}>Fechar</button>
+            </div>
+            <div className="max-h-[75vh] overflow-auto p-4">
+              <pre className="rounded bg-slate-50 p-3 text-xs text-slate-700">{serializeAlert(selectedAlert)}</pre>
+            </div>
+          </Card>
+        </div>
+      )}
+
     </div>
   );
 }
