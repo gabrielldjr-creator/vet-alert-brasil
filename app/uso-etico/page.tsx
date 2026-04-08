@@ -150,10 +150,10 @@ export default function UsoEticoPage() {
             <span className="text-xs font-medium text-emerald-600">Check-in clínico rápido</span>
           </Link>
           <Link
-            href="/dashboard"
+            href="/global-alerts-dashboard"
             className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
           >
-            Ver painel de sinais regionais
+            Ver Alerts Intelligence de sinais regionais
           </Link>
         </div>
       </Card>

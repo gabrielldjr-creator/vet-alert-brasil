@@ -40,10 +40,13 @@ export default function Home() {
         </Card>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button href="/alerta/novo" className="w-full sm:w-auto px-6 py-3 text-base">
-            Registrar sinal
+            Veterinary Signal
           </Button>
-          <Button href="/dashboard" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
-            Ver painel situacional
+          <Button href="/agro-signals/new" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
+            Field Signal
+          </Button>
+          <Button href="/global-alerts-dashboard" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
+            Alerts Intelligence
           </Button>
         </div>
       </section>
