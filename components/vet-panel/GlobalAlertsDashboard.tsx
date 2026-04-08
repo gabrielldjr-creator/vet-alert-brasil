@@ -49,26 +49,58 @@ const toNumber = (value: unknown) => {
   return null;
 };
 
-const serializeAlert = (alert: AlertRecord) => {
-  const replacer = (_key: string, value: unknown) => {
-    if (
-      value &&
-      typeof value === "object" &&
-      "toDate" in (value as Record<string, unknown>) &&
-      typeof (value as { toDate?: unknown }).toDate === "function"
-    ) {
-      const date = (value as { toDate: () => Date }).toDate();
-      return Number.isNaN(date.getTime()) ? null : date.toISOString();
-    }
-    return value;
-  };
 
-  try {
-    return JSON.stringify(alert, replacer, 2);
-  } catch {
-    return "{}";
-  }
+type AlertRecordExtended = AlertRecord & { confidenceScore?: number | string; source?: string; signalType?: string };
+
+const getSourceLabel = (source?: string) => {
+  if (source === "agro_retail") return "Sinal de Campo";
+  return "Sinal Veterinário";
 };
+
+function AlertExpandedView({ alert }: { alert: AlertRecord }) {
+  const record = alert as AlertRecordExtended;
+  const rows: Array<{ label: string; value: string | number }> = [
+    { label: "Fonte do sinal", value: getSourceLabel(record.source) },
+    { label: "Região", value: alert.regionGroup ?? alert.context?.country ?? "Global" },
+    { label: "Estado", value: alert.state ?? "Não informado" },
+    { label: "Município", value: alert.city ?? alert.cityName ?? alert.municipality ?? "Não informado" },
+    { label: "Espécie", value: alert.species ?? "Não informado" },
+    { label: "Tipo de alerta", value: alert.alertType ?? "Não informado" },
+    { label: "Grupo de alerta", value: alert.alertGroup ?? "Não informado" },
+    { label: "Nível de risco", value: alert.severity ?? "Não informado" },
+    { label: "Casos", value: alert.cases ?? "Não informado" },
+    { label: "Rebanho", value: alert.herdCount ?? alert.context?.herdCountLabel ?? "Não informado" },
+    { label: "Confiança", value: record.confidenceScore ?? "Não informado" },
+    { label: "Origem do registro", value: record.source ?? "Não informado" },
+    { label: "Prescrição veterinária", value: String((alert.context as { retailSignal?: { veterinaryPrescription?: string } } | undefined)?.retailSignal?.veterinaryPrescription ?? "Não informado") },
+    { label: "Produto vendido", value: String((alert.context as { retailSignal?: { productSold?: string } } | undefined)?.retailSignal?.productSold ?? "Não informado") },
+    { label: "Categoria do produto", value: String((alert.context as { retailSignal?: { productCategory?: string } } | undefined)?.retailSignal?.productCategory ?? "Não informado") },
+    { label: "Duração", value: String((alert.context as { retailSignal?: { durationType?: string; durationDays?: number | null } } | undefined)?.retailSignal?.durationType === "ongoing" ? `${(alert.context as { retailSignal?: { durationDays?: number | null } } | undefined)?.retailSignal?.durationDays ?? "-"} dia(s)` : (alert.context as { retailSignal?: { durationType?: string } } | undefined)?.retailSignal?.durationType === "recent" ? "Recente" : "Não informado") },
+  ];
+
+  const tags = alert.context?.alertDetails ?? [];
+
+  return (
+    <div className="space-y-3">
+      <dl className="grid gap-2 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.label} className="rounded border border-slate-200 bg-white px-3 py-2">
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{row.label}</dt>
+            <dd className="text-sm text-slate-800">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="rounded border border-slate-200 bg-white px-3 py-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Classificações / tags</p>
+        <p className="text-sm text-slate-800">{tags.length ? tags.join(" • ") : "Não informado"}</p>
+      </div>
+      <div className="rounded border border-slate-200 bg-white px-3 py-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Observações</p>
+        <p className="text-sm text-slate-800">{alert.context?.notes?.trim() ? alert.context.notes : "Não informado"}</p>
+      </div>
+    </div>
+  );
+}
 
 function DistributionBar({ value, max }: { value: number; max: number }) {
   const width = max > 0 ? (value / max) * 100 : 0;
@@ -274,7 +306,7 @@ export function GlobalAlertsDashboard() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-slate-900">Global Alerts Dashboard</h1>
+        <h1 className="text-3xl font-semibold text-slate-900">Painel Global de Alertas</h1>
         <p className="text-base text-slate-600">Dados sanitários estruturados por região, espécie e classificação</p>
       </header>
 
@@ -351,8 +383,8 @@ export function GlobalAlertsDashboard() {
             <span>Fonte do sinal</span>
             <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.sourceType} onChange={(e) => setFilters((p) => ({ ...p, sourceType: e.target.value as "all" | "veterinary" | "field_retail" }))}>
               <option value="all">Todas</option>
-              <option value="veterinary">Veterinary Signal</option>
-              <option value="field_retail">Field Signal</option>
+              <option value="veterinary">Sinal Veterinário</option>
+              <option value="field_retail">Sinal de Campo</option>
             </select>
           </label>
 
@@ -446,7 +478,7 @@ export function GlobalAlertsDashboard() {
                     </th>
                   ))}
                   <th className="px-3 py-2 font-semibold">Classificações / Tags</th>
-                  <th className="px-3 py-2 font-semibold">Registro completo</th>
+                  <th className="px-3 py-2 font-semibold">Detalhamento</th>
                 </tr>
               </thead>
               <tbody>
@@ -478,8 +510,8 @@ export function GlobalAlertsDashboard() {
                       <td className="px-3 py-2">{tags.length ? tags.join(" • ") : "-"}</td>
                       <td className="px-3 py-2">
                         <details onClick={(e) => e.stopPropagation()}>
-                          <summary className="cursor-pointer text-xs text-emerald-700">Ver todos os campos</summary>
-                          <pre className="mt-2 max-h-56 overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-700">{serializeAlert(alert)}</pre>
+                          <summary className="cursor-pointer text-xs text-emerald-700">Ver detalhes</summary>
+                          <div className="mt-2"><AlertExpandedView alert={alert} /></div>
                         </details>
                       </td>
                     </tr>
@@ -517,8 +549,8 @@ export function GlobalAlertsDashboard() {
                     Abrir drill-down completo
                   </button>
                   <details onClick={(e) => e.stopPropagation()}>
-                    <summary className="cursor-pointer text-xs text-emerald-700">Ver todos os campos</summary>
-                    <pre className="mt-2 max-h-56 overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-700">{serializeAlert(alert)}</pre>
+                    <summary className="cursor-pointer text-xs text-emerald-700">Ver detalhes</summary>
+                    <div className="mt-2"><AlertExpandedView alert={alert} /></div>
                   </details>
                 </Card>
               );
@@ -542,11 +574,11 @@ export function GlobalAlertsDashboard() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 p-4" onClick={() => setSelectedAlert(null)}>
           <div onClick={(e) => e.stopPropagation()}><Card className="max-h-[85vh] w-full max-w-4xl overflow-hidden p-0">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-900">Drill-down do registro</p>
+              <p className="text-sm font-semibold text-slate-900">Detalhamento do registro</p>
               <button type="button" className="rounded border border-slate-200 px-2 py-1 text-xs" onClick={() => setSelectedAlert(null)}>Fechar</button>
             </div>
             <div className="max-h-[75vh] overflow-auto p-4">
-              <pre className="rounded bg-slate-50 p-3 text-xs text-slate-700">{serializeAlert(selectedAlert)}</pre>
+              <AlertExpandedView alert={selectedAlert} />
             </div>
           </Card></div>
         </div>

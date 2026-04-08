@@ -2,9 +2,9 @@ import Link from "next/link";
 
 
 const links = [
-  { href: "/alerta/novo", label: "Veterinary Signal" },
-  { href: "/agro-signals/new", label: "Field Signal" },
-  { href: "/global-alerts-dashboard", label: "Alerts Intelligence" },
+  { href: "/alerta/novo", label: "Sinal Veterinário" },
+  { href: "/agro-signals/new", label: "Sinal de Campo" },
+  { href: "/global-alerts-dashboard", label: "Inteligência de Alertas" },
 ];
 
 export function Header() {
@@ -32,7 +32,7 @@ export function Header() {
               </Link>
             ))}
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">
-              Data access policy
+              Política de acesso aos dados
             </span>
           </nav>
           <Link
