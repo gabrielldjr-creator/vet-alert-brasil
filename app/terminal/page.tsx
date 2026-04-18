@@ -26,8 +26,6 @@ type MapPoint = {
   label: string;
 };
 
-type LeafletNS = typeof import("leaflet");
-
 function formatEventLine(event: TerminalEvent): string {
   const timestamp = event.timestamp ?? "--:--:--";
   const state = event.state ?? "N/A";
@@ -91,6 +89,18 @@ function buildClusterPoints(events: TerminalEvent[]): MapPoint[] {
   return Array.from(grid.values());
 }
 
+function latLngToCanvas(point: MapPoint): { x: number; y: number } {
+  const minLat = -33;
+  const maxLat = -5;
+  const minLng = -74;
+  const maxLng = -34;
+
+  const x = ((point.lng - minLng) / (maxLng - minLng)) * 100;
+  const y = (1 - (point.lat - minLat) / (maxLat - minLat)) * 100;
+
+  return { x, y };
+}
+
 export default function TerminalPage() {
   const [eventLines, setEventLines] = useState<string[]>([]);
   const [eventRecords, setEventRecords] = useState<TerminalEvent[]>([]);
@@ -98,51 +108,8 @@ export default function TerminalPage() {
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "open" | "closed" | "error">(
     "connecting",
   );
-  const [mapReady, setMapReady] = useState(false);
 
   const feedRef = useRef<HTMLDivElement | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<import("leaflet").Map | null>(null);
-  const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
-  const leafletRef = useRef<LeafletNS | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const setupMap = async () => {
-      if (!mapContainerRef.current || mapRef.current) return;
-
-      const L = await import("leaflet");
-      if (!mounted || !mapContainerRef.current) return;
-
-      leafletRef.current = L;
-      const map = L.map(mapContainerRef.current, {
-        center: [-15.8, -47.9],
-        zoom: 4,
-        zoomControl: true,
-      });
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
-      }).addTo(map);
-
-      const layerGroup = L.layerGroup().addTo(map);
-      mapRef.current = map;
-      layerRef.current = layerGroup;
-      setMapReady(true);
-    };
-
-    setupMap();
-
-    return () => {
-      mounted = false;
-      layerRef.current?.clearLayers();
-      mapRef.current?.remove();
-      mapRef.current = null;
-      layerRef.current = null;
-      leafletRef.current = null;
-    };
-  }, []);
 
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -199,28 +166,7 @@ export default function TerminalPage() {
     node.scrollTop = node.scrollHeight;
   }, [eventLines]);
 
-  useEffect(() => {
-    if (!mapReady || !leafletRef.current || !layerRef.current) return;
-
-    const L = leafletRef.current;
-    const layer = layerRef.current;
-    const points = buildClusterPoints(eventRecords);
-
-    layer.clearLayers();
-
-    points.forEach((point) => {
-      const radius = Math.min(8 + point.count * 1.5, 24);
-      const marker = L.circleMarker([point.lat, point.lng], {
-        radius,
-        color: "#f59e0b",
-        fillColor: "#f97316",
-        fillOpacity: 0.45,
-        weight: 1,
-      });
-      marker.bindTooltip(`${point.label}<br/>Eventos: ${point.count}`, { direction: "top" });
-      marker.addTo(layer);
-    });
-  }, [eventRecords, mapReady]);
+  const mapPoints = useMemo(() => buildClusterPoints(eventRecords), [eventRecords]);
 
   const statusLabel = useMemo(() => {
     if (connectionStatus === "open") return "Conectado";
@@ -279,11 +225,31 @@ export default function TerminalPage() {
         <section className="flex min-h-[220px] w-full flex-col rounded-2xl border border-slate-800 bg-slate-900/70 lg:max-w-[330px]">
           <header className="border-b border-slate-800 px-4 py-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-indigo-300">Map</h2>
-            <p className="text-xs text-slate-400">Eventos plotados e agrupados visualmente</p>
+            <p className="text-xs text-slate-400">Cluster visual (canvas-style) por região</p>
           </header>
           <div className="flex flex-1 p-3">
-            <div className="h-full min-h-[220px] w-full overflow-hidden rounded-xl border border-slate-700">
-              <div ref={mapContainerRef} className="h-full min-h-[220px] w-full" />
+            <div className="relative h-full min-h-[220px] w-full overflow-hidden rounded-xl border border-slate-700 bg-gradient-to-b from-slate-900 to-slate-950">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.12),transparent_70%)]" />
+              {mapPoints.map((point, index) => {
+                const { x, y } = latLngToCanvas(point);
+                const size = Math.min(14 + point.count * 2, 34);
+                return (
+                  <div
+                    key={`${point.label}-${index}`}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-300/70 bg-amber-500/35 shadow-[0_0_12px_rgba(251,146,60,0.35)]"
+                    style={{
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      width: `${size}px`,
+                      height: `${size}px`,
+                    }}
+                    title={`${point.label} • Eventos: ${point.count}`}
+                  />
+                );
+              })}
+              <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-slate-950/70 px-2 py-1 text-[10px] text-slate-300">
+                Pontos agrupados: {mapPoints.length}
+              </div>
             </div>
           </div>
         </section>
