@@ -245,6 +245,7 @@ def _escalation_probability(signal_alert: dict[str, Any], trend_direction: str) 
 
 
 def _demo_alerts() -> list[dict[str, Any]]:
+    demo_events = _demo_events()
     return [
         {
             "type": "cluster",
@@ -252,8 +253,32 @@ def _demo_alerts() -> list[dict[str, Any]]:
             "confidence_score": 0.72,
             "trend_direction": "increasing",
             "probability_of_escalation": 0.81,
-            "related_events": _demo_events(),
-        }
+            "related_events": demo_events,
+        },
+        {
+            "type": "growth",
+            "location": "PR:Londrina",
+            "confidence_score": 0.69,
+            "trend_direction": "increasing",
+            "probability_of_escalation": 0.79,
+            "related_events": demo_events,
+        },
+        {
+            "type": "spread",
+            "location": "SC:Florianópolis, PR:Londrina, MG:Uberlândia",
+            "confidence_score": 0.66,
+            "trend_direction": "stable",
+            "probability_of_escalation": 0.67,
+            "related_events": demo_events,
+        },
+        {
+            "type": "anomaly",
+            "location": "MG:Uberlândia",
+            "confidence_score": 0.63,
+            "trend_direction": "increasing",
+            "probability_of_escalation": 0.71,
+            "related_events": demo_events,
+        },
     ]
 
 
