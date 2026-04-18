@@ -44,20 +44,20 @@ def _sequenced_events() -> list[dict[str, Any]]:
 
 @terminal_router.websocket("/stream")
 async def terminal_stream(websocket: WebSocket) -> None:
-    """Streams existing events in sequence every 2 seconds."""
+    """Keeps a websocket connection alive with heartbeat messages every 2 seconds."""
     await websocket.accept()
 
     try:
         while True:
-            events = _sequenced_events()
-            if not events:
-                await asyncio.sleep(2)
-                continue
-
-            for event in events:
-                await websocket.send_json(event)
-                await asyncio.sleep(2)
+            await websocket.send_json(
+                {
+                    "type": "heartbeat",
+                    "message": "alive",
+                }
+            )
+            await asyncio.sleep(2)
     except WebSocketDisconnect:
+        # Client disconnected: swallow and exit cleanly.
         return
 
 
