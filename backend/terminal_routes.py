@@ -115,7 +115,7 @@ async def terminal_stream(websocket: WebSocket) -> None:
 
         if mode == "replay":
             try:
-                replay_events = await asyncio.wait_for(asyncio.to_thread(_load_replay_events), timeout=10)
+                replay_events = await asyncio.wait_for(asyncio.to_thread(_load_replay_events), timeout=60)
             except asyncio.TimeoutError:
                 replay_events = _demo_events()
 
