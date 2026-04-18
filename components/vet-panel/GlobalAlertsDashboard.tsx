@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { Card } from "../Card";
-import { db } from "../../lib/firebase";
+import { auth, db } from "../../lib/firebase";
 import { stateOptions } from "../../lib/regions";
 import { AlertRecord } from "./types";
 
@@ -121,22 +122,43 @@ export function GlobalAlertsDashboard() {
   const [selectedAlert, setSelectedAlert] = useState<AlertRecord | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, "alerts"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setAlerts(
-          snapshot.docs.map((docSnap) => ({
-            ...(docSnap.data() as AlertRecord),
-            id: docSnap.id,
-          }))
-        );
-        setLoadState("ready");
-      },
-      () => setLoadState("error")
-    );
+    let unsubscribeSnapshot: (() => void) | null = null;
 
-    return () => unsubscribe();
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (!user) {
+          await signInAnonymously(auth);
+          return;
+        }
+
+        const q = query(collection(db, "alerts"), orderBy("createdAt", "desc"));
+        unsubscribeSnapshot?.();
+        unsubscribeSnapshot = onSnapshot(
+          q,
+          (snapshot) => {
+            setAlerts(
+              snapshot.docs.map((docSnap) => ({
+                ...(docSnap.data() as AlertRecord),
+                id: docSnap.id,
+              }))
+            );
+            setLoadState("ready");
+          },
+          () => {
+            setAlerts([]);
+            setLoadState("error");
+          }
+        );
+      } catch {
+        setAlerts([]);
+        setLoadState("error");
+      }
+    });
+
+    return () => {
+      unsubscribeSnapshot?.();
+      unsubscribeAuth();
+    };
   }, []);
 
   const filteredAlerts = useMemo(() => {
