@@ -52,13 +52,18 @@ async def terminal_stream(websocket: WebSocket) -> None:
         now = datetime.now(tz=timezone.utc)
         cutoff = now - timedelta(days=90)
 
-        historical = get_events(limit=5000)
-        replay_events = [
-            event
-            for event in historical
-            if (_timestamp_sort_key(event) >= cutoff)
-        ]
-        replay_events.sort(key=_timestamp_sort_key)
+        replay_events: list[dict[str, Any]] = []
+        try:
+            historical = get_events(limit=5000)
+            replay_events = [
+                event
+                for event in historical
+                if (_timestamp_sort_key(event) >= cutoff)
+            ]
+            replay_events.sort(key=_timestamp_sort_key)
+        except Exception:
+            # If DB access fails (credentials/network/etc), keep socket alive with heartbeats.
+            replay_events = []
 
         # Replay mode: emit events in chronological order, 1-2s apart.
         for event in replay_events:
@@ -70,7 +75,7 @@ async def terminal_stream(websocket: WebSocket) -> None:
             )
             await asyncio.sleep(random.uniform(1.0, 2.0))
 
-        # After replay finishes, keep the socket alive with heartbeat messages.
+        # After replay finishes (or if replay cannot load), keep socket alive with heartbeats.
         while True:
             await websocket.send_json(
                 {
