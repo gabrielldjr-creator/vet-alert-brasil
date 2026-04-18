@@ -121,7 +121,7 @@ async def terminal_stream(websocket: WebSocket) -> None:
 
         if mode == "replay":
             try:
-                replay_events = await asyncio.wait_for(asyncio.to_thread(_load_replay_events), timeout=30)
+                replay_events = await asyncio.wait_for(asyncio.to_thread(_load_replay_events), timeout=60)
             except asyncio.TimeoutError:
                 replay_events = _demo_events()
 
@@ -246,40 +246,37 @@ def _escalation_probability(signal_alert: dict[str, Any], trend_direction: str) 
 
 def _demo_alerts() -> list[dict[str, Any]]:
     demo_events = _demo_events()
-    return [
-        {
-            "type": "cluster",
-            "location": "SC:Florianópolis",
-            "confidence_score": 0.72,
-            "trend_direction": "increasing",
-            "probability_of_escalation": 0.81,
-            "related_events": demo_events,
-        },
-        {
-            "type": "growth",
-            "location": "PR:Londrina",
-            "confidence_score": 0.69,
-            "trend_direction": "increasing",
-            "probability_of_escalation": 0.79,
-            "related_events": demo_events,
-        },
-        {
-            "type": "spread",
-            "location": "SC:Florianópolis, PR:Londrina, MG:Uberlândia",
-            "confidence_score": 0.66,
-            "trend_direction": "stable",
-            "probability_of_escalation": 0.67,
-            "related_events": demo_events,
-        },
-        {
-            "type": "anomaly",
-            "location": "MG:Uberlândia",
-            "confidence_score": 0.63,
-            "trend_direction": "increasing",
-            "probability_of_escalation": 0.71,
-            "related_events": demo_events,
-        },
+    types = ["cluster", "growth", "spread", "anomaly"]
+    trends = ["increasing", "stable", "decreasing"]
+    locations = [
+        "SC:Florianópolis",
+        "PR:Londrina",
+        "MG:Uberlândia",
+        "RS:Porto Alegre",
+        "SP:Ribeirão Preto",
+        "GO:Goiânia",
     ]
+
+    alerts: list[dict[str, Any]] = []
+    for i in range(30):
+        alert_type = types[i % len(types)]
+        trend = trends[i % len(trends)]
+        location = locations[i % len(locations)]
+        confidence = round(min(0.55 + (i % 10) * 0.03, 0.95), 2)
+        escalation = round(min(confidence + (0.12 if trend == "increasing" else 0.04), 0.99), 2)
+
+        alerts.append(
+            {
+                "type": alert_type,
+                "location": location,
+                "confidence_score": confidence,
+                "trend_direction": trend,
+                "probability_of_escalation": escalation,
+                "related_events": demo_events,
+            }
+        )
+
+    return alerts
 
 
 @terminal_router.get("/alerts")
