@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+import random
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -44,10 +45,32 @@ def _sequenced_events() -> list[dict[str, Any]]:
 
 @terminal_router.websocket("/stream")
 async def terminal_stream(websocket: WebSocket) -> None:
-    """Keeps a websocket connection alive with heartbeat messages every 2 seconds."""
+    """Replays historical events and then keeps socket alive with heartbeats."""
     await websocket.accept()
 
     try:
+        now = datetime.now(tz=timezone.utc)
+        cutoff = now - timedelta(days=90)
+
+        historical = get_events(limit=5000)
+        replay_events = [
+            event
+            for event in historical
+            if (_timestamp_sort_key(event) >= cutoff)
+        ]
+        replay_events.sort(key=_timestamp_sort_key)
+
+        # Replay mode: emit events in chronological order, 1-2s apart.
+        for event in replay_events:
+            await websocket.send_json(
+                {
+                    "type": "event",
+                    "data": event,
+                }
+            )
+            await asyncio.sleep(random.uniform(1.0, 2.0))
+
+        # After replay finishes, keep the socket alive with heartbeat messages.
         while True:
             await websocket.send_json(
                 {
