@@ -49,12 +49,24 @@ async def terminal_stream(websocket: WebSocket) -> None:
     await websocket.accept()
 
     try:
+        # Send an immediate frame so proxies/load-balancers keep the WS open.
+        await websocket.send_json(
+            {
+                "type": "heartbeat",
+                "message": "alive",
+            }
+        )
+
         now = datetime.now(tz=timezone.utc)
         cutoff = now - timedelta(days=90)
 
         replay_events: list[dict[str, Any]] = []
         try:
-            historical = get_events(limit=5000)
+            # Bound DB wait time so slow Firestore calls do not idle-timeout the socket.
+            historical = await asyncio.wait_for(
+                asyncio.to_thread(get_events, 5000),
+                timeout=8,
+            )
             replay_events = [
                 event
                 for event in historical
@@ -62,7 +74,7 @@ async def terminal_stream(websocket: WebSocket) -> None:
             ]
             replay_events.sort(key=_timestamp_sort_key)
         except Exception:
-            # If DB access fails (credentials/network/etc), keep socket alive with heartbeats.
+            # If DB access fails (credentials/network/timeout), keep socket alive with heartbeats.
             replay_events = []
 
         # Replay mode: emit events in chronological order, 1-2s apart.
