@@ -101,6 +101,39 @@ function latLngToCanvas(point: MapPoint): { x: number; y: number } {
   return { x, y };
 }
 
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/$/, "");
+}
+
+function resolveApiBase(): string {
+  const configured = process.env.NEXT_PUBLIC_TERMINAL_API_BASE;
+  if (configured && configured.trim()) {
+    return trimTrailingSlash(configured.trim());
+  }
+
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
+  return "";
+}
+
+function resolveWsBase(apiBase: string): string {
+  const configured = process.env.NEXT_PUBLIC_TERMINAL_WS_BASE;
+  if (configured && configured.trim()) {
+    return trimTrailingSlash(configured.trim());
+  }
+
+  if (apiBase.startsWith("https://")) return `wss://${apiBase.slice("https://".length)}`;
+  if (apiBase.startsWith("http://")) return `ws://${apiBase.slice("http://".length)}`;
+
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+  }
+
+  return "";
+}
+
 export default function TerminalPage() {
   const [eventLines, setEventLines] = useState<string[]>([]);
   const [eventRecords, setEventRecords] = useState<TerminalEvent[]>([]);
@@ -112,8 +145,9 @@ export default function TerminalPage() {
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(`${protocol}://${window.location.host}/terminal/stream`);
+    const apiBase = resolveApiBase();
+    const wsBase = resolveWsBase(apiBase);
+    const socket = new WebSocket(`${wsBase}/terminal/stream`);
 
     socket.onopen = () => setConnectionStatus("open");
     socket.onclose = () => setConnectionStatus("closed");
@@ -140,7 +174,8 @@ export default function TerminalPage() {
 
     const fetchAlerts = async () => {
       try {
-        const response = await fetch("/terminal/alerts", { cache: "no-store" });
+        const apiBase = resolveApiBase();
+        const response = await fetch(`${apiBase}/terminal/alerts`, { cache: "no-store" });
         if (!response.ok) return;
         const payload = (await response.json()) as SignalAlert[];
         if (isMounted) {
@@ -182,6 +217,7 @@ export default function TerminalPage() {
           <header className="border-b border-slate-800 px-4 py-3">
             <h1 className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Live Event Feed</h1>
             <p className="text-xs text-slate-400">WebSocket /terminal/stream • {statusLabel}</p>
+            <p className="text-[11px] text-slate-500">API base: {resolveApiBase() || "não configurado"}</p>
           </header>
           <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-2 font-mono text-xs leading-relaxed">
             <ul className="space-y-1">
