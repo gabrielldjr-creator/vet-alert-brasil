@@ -48,6 +48,9 @@ export default function Home() {
           <Button href="/global-alerts-dashboard" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
             Inteligência de Alertas
           </Button>
+          <Button href="/terminal" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
+            Terminal ao Vivo
+          </Button>
         </div>
       </section>
 
@@ -140,6 +143,13 @@ export default function Home() {
               className="border-slate-300 text-slate-900 hover:border-slate-400 hover:bg-slate-50"
             >
               Acessar inteligência de alertas
+            </Button>
+            <Button
+              href="/terminal"
+              variant="secondary"
+              className="ml-3 border-slate-300 text-slate-900 hover:border-slate-400 hover:bg-slate-50"
+            >
+              Abrir terminal ao vivo
             </Button>
           </div>
         </Card>
