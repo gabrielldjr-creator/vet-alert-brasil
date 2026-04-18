@@ -19,6 +19,13 @@ type SignalAlert = {
   related_events?: Array<Record<string, unknown>>;
 };
 
+type StreamMessage = {
+  type?: "event" | "heartbeat";
+  data?: TerminalEvent;
+  message?: string;
+  mode?: "live" | "replay";
+};
+
 type MapPoint = {
   lat: number;
   lng: number;
@@ -141,13 +148,14 @@ export default function TerminalPage() {
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "open" | "closed" | "error">(
     "connecting",
   );
+  const [streamMode, setStreamMode] = useState<"live" | "replay">("live");
 
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const apiBase = resolveApiBase();
     const wsBase = resolveWsBase(apiBase);
-    const socket = new WebSocket(`${wsBase}/terminal/stream`);
+    const socket = new WebSocket(`${wsBase}/terminal/stream?mode=${streamMode}`);
 
     socket.onopen = () => setConnectionStatus("open");
     socket.onclose = () => setConnectionStatus("closed");
@@ -155,10 +163,15 @@ export default function TerminalPage() {
 
     socket.onmessage = (message) => {
       try {
-        const payload: TerminalEvent = JSON.parse(message.data);
-        const line = formatEventLine(payload);
+        const payload = JSON.parse(message.data) as StreamMessage;
+        const eventData = payload.data;
+        if (payload.type !== "event" || !eventData) {
+          return;
+        }
+
+        const line = formatEventLine(eventData);
         setEventLines((current) => [...current, line].slice(-300));
-        setEventRecords((current) => [...current, payload].slice(-300));
+        setEventRecords((current) => [...current, eventData].slice(-300));
       } catch {
         // Ignore malformed messages to keep the stream running.
       }
@@ -167,7 +180,7 @@ export default function TerminalPage() {
     return () => {
       socket.close();
     };
-  }, []);
+  }, [streamMode]);
 
   useEffect(() => {
     let isMounted = true;
@@ -218,6 +231,42 @@ export default function TerminalPage() {
             <h1 className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Live Event Feed</h1>
             <p className="text-xs text-slate-400">WebSocket /terminal/stream • {statusLabel}</p>
             <p className="text-[11px] text-slate-500">API base: {resolveApiBase() || "não configurado"}</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setConnectionStatus("connecting");
+                  setStreamMode("live");
+                  setEventLines([]);
+                  setEventRecords([]);
+                }}
+                className={[
+                  "rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide",
+                  streamMode === "live"
+                    ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
+                    : "border-slate-700 bg-slate-900/60 text-slate-300",
+                ].join(" ")}
+              >
+                Live
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConnectionStatus("connecting");
+                  setStreamMode("replay");
+                  setEventLines([]);
+                  setEventRecords([]);
+                }}
+                className={[
+                  "rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide",
+                  streamMode === "replay"
+                    ? "border-cyan-400 bg-cyan-500/20 text-cyan-200"
+                    : "border-slate-700 bg-slate-900/60 text-slate-300",
+                ].join(" ")}
+              >
+                Replay
+              </button>
+            </div>
           </header>
           <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-2 font-mono text-xs leading-relaxed">
             <ul className="space-y-1">

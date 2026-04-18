@@ -43,61 +43,103 @@ def _sequenced_events() -> list[dict[str, Any]]:
     return sorted(events, key=_timestamp_sort_key)
 
 
-@terminal_router.websocket("/stream")
-async def terminal_stream(websocket: WebSocket) -> None:
-    """Replays historical events and then keeps socket alive with heartbeats."""
-    await websocket.accept()
+def _demo_events() -> list[dict[str, Any]]:
+    now = datetime.now(tz=timezone.utc)
+    return [
+        {
+            "timestamp": (now - timedelta(minutes=6)).isoformat(),
+            "state": "SC",
+            "city": "Florianópolis",
+            "species": "Bovinos",
+            "alert_type": "Síndrome digestiva",
+            "number_of_cases": 3,
+        },
+        {
+            "timestamp": (now - timedelta(minutes=4)).isoformat(),
+            "state": "PR",
+            "city": "Londrina",
+            "species": "Equinos",
+            "alert_type": "Suspeita de intoxicação",
+            "number_of_cases": 5,
+        },
+        {
+            "timestamp": (now - timedelta(minutes=2)).isoformat(),
+            "state": "MG",
+            "city": "Uberlândia",
+            "species": "Aves",
+            "alert_type": "Síndrome respiratória",
+            "number_of_cases": 7,
+        },
+    ]
+
+
+def _load_replay_events() -> list[dict[str, Any]]:
+    now = datetime.now(tz=timezone.utc)
+    cutoff = now - timedelta(days=90)
 
     try:
-        # Send an immediate frame so proxies/load-balancers keep the WS open.
-        await websocket.send_json(
-            {
-                "type": "heartbeat",
-                "message": "alive",
-            }
-        )
+        historical = get_events(limit=5000)
+    except Exception:
+        historical = []
 
-        now = datetime.now(tz=timezone.utc)
-        cutoff = now - timedelta(days=90)
+    replay_events = [event for event in historical if _timestamp_sort_key(event) >= cutoff]
+    replay_events.sort(key=_timestamp_sort_key)
 
-        replay_events: list[dict[str, Any]] = []
-        try:
-            # Bound DB wait time so slow Firestore calls do not idle-timeout the socket.
-            historical = await asyncio.wait_for(
-                asyncio.to_thread(get_events, 5000),
-                timeout=8,
-            )
-            replay_events = [
-                event
-                for event in historical
-                if (_timestamp_sort_key(event) >= cutoff)
-            ]
-            replay_events.sort(key=_timestamp_sort_key)
-        except Exception:
-            # If DB access fails (credentials/network/timeout), keep socket alive with heartbeats.
-            replay_events = []
+    return replay_events if replay_events else _demo_events()
 
-        # Replay mode: emit events in chronological order, 1-2s apart.
-        for event in replay_events:
-            await websocket.send_json(
-                {
-                    "type": "event",
-                    "data": event,
-                }
-            )
-            await asyncio.sleep(random.uniform(1.0, 2.0))
 
-        # After replay finishes (or if replay cannot load), keep socket alive with heartbeats.
+def _load_live_events_pool() -> list[dict[str, Any]]:
+    try:
+        recent = get_events(limit=120)
+    except Exception:
+        recent = []
+
+    if recent:
+        return sorted(recent, key=_timestamp_sort_key)
+
+    return _demo_events()
+
+
+@terminal_router.websocket("/stream")
+async def terminal_stream(websocket: WebSocket) -> None:
+    """Supports replay/live modes and keeps connection alive with heartbeats."""
+    await websocket.accept()
+
+    mode = websocket.query_params.get("mode", "live").strip().lower()
+    if mode not in {"live", "replay"}:
+        mode = "live"
+
+    try:
+        # Immediate frame so proxies/load-balancers do not close idle sockets.
+        await websocket.send_json({"type": "heartbeat", "message": "alive", "mode": mode})
+
+        if mode == "replay":
+            replay_events = await asyncio.wait_for(asyncio.to_thread(_load_replay_events), timeout=10)
+            for event in replay_events:
+                await websocket.send_json({"type": "event", "data": event, "mode": "replay"})
+                await asyncio.sleep(random.uniform(1.0, 2.0))
+        else:
+            live_pool = await asyncio.wait_for(asyncio.to_thread(_load_live_events_pool), timeout=10)
+            index = 0
+            while True:
+                event = live_pool[index % len(live_pool)]
+                await websocket.send_json({"type": "event", "data": event, "mode": "live"})
+                index += 1
+                await asyncio.sleep(random.uniform(1.0, 2.0))
+
+        # Replay finished: continue heartbeat keepalive.
         while True:
-            await websocket.send_json(
-                {
-                    "type": "heartbeat",
-                    "message": "alive",
-                }
-            )
+            await websocket.send_json({"type": "heartbeat", "message": "alive", "mode": mode})
             await asyncio.sleep(2)
+    except asyncio.TimeoutError:
+        # If data loading is slow, keep connection alive with heartbeats only.
+        try:
+            while True:
+                await websocket.send_json({"type": "heartbeat", "message": "alive", "mode": mode})
+                await asyncio.sleep(2)
+        except WebSocketDisconnect:
+            return
     except WebSocketDisconnect:
-        # Client disconnected: swallow and exit cleanly.
         return
 
 
