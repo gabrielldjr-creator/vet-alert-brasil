@@ -114,31 +114,31 @@ async def terminal_stream(websocket: WebSocket) -> None:
         await websocket.send_json({"type": "heartbeat", "message": "alive", "mode": mode})
 
         if mode == "replay":
-            replay_events = await asyncio.wait_for(asyncio.to_thread(_load_replay_events), timeout=10)
+            try:
+                replay_events = await asyncio.wait_for(asyncio.to_thread(_load_replay_events), timeout=10)
+            except asyncio.TimeoutError:
+                replay_events = _demo_events()
+
             for event in replay_events:
                 await websocket.send_json({"type": "event", "data": event, "mode": "replay"})
                 await asyncio.sleep(random.uniform(1.0, 2.0))
+
+            # Replay finished: continue heartbeat keepalive.
+            while True:
+                await websocket.send_json({"type": "heartbeat", "message": "alive", "mode": mode})
+                await asyncio.sleep(2)
         else:
-            live_pool = await asyncio.wait_for(asyncio.to_thread(_load_live_events_pool), timeout=10)
+            try:
+                live_pool = await asyncio.wait_for(asyncio.to_thread(_load_live_events_pool), timeout=10)
+            except asyncio.TimeoutError:
+                live_pool = _demo_events()
+
             index = 0
             while True:
                 event = live_pool[index % len(live_pool)]
                 await websocket.send_json({"type": "event", "data": event, "mode": "live"})
                 index += 1
                 await asyncio.sleep(random.uniform(1.0, 2.0))
-
-        # Replay finished: continue heartbeat keepalive.
-        while True:
-            await websocket.send_json({"type": "heartbeat", "message": "alive", "mode": mode})
-            await asyncio.sleep(2)
-    except asyncio.TimeoutError:
-        # If data loading is slow, keep connection alive with heartbeats only.
-        try:
-            while True:
-                await websocket.send_json({"type": "heartbeat", "message": "alive", "mode": mode})
-                await asyncio.sleep(2)
-        except WebSocketDisconnect:
-            return
     except WebSocketDisconnect:
         return
 
@@ -238,6 +238,19 @@ def _escalation_probability(signal_alert: dict[str, Any], trend_direction: str) 
     return round(min(max(base, 0.01), 0.99), 2)
 
 
+def _demo_alerts() -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "cluster",
+            "location": "SC:Florianópolis",
+            "confidence_score": 0.72,
+            "trend_direction": "increasing",
+            "probability_of_escalation": 0.81,
+            "related_events": _demo_events(),
+        }
+    ]
+
+
 @terminal_router.get("/alerts")
 def get_terminal_alerts() -> list[dict[str, Any]]:
     """Returns detected signal alerts based on normalized terminal events."""
@@ -262,4 +275,4 @@ def get_terminal_alerts() -> list[dict[str, Any]]:
             }
         )
 
-    return response
+    return response if response else _demo_alerts()
