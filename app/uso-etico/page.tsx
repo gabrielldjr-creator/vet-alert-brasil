@@ -2,21 +2,21 @@ import Link from "next/link";
 import { Card } from "../../components/Card";
 
 export const metadata = {
-  title: "Uso Ético dos Sinais Regionais do VetAlert | Vet Alert Brasil",
+  title: "Uso Ético | VetAlert + SAPSA",
   description:
-    "Documento institucional sobre uso ético de sinais sanitários observacionais de múltiplas fontes no Vet Alert Brasil.",
+    "Documento institucional sobre uso ético dos sinais observacionais nas camadas VetAlert e SAPSA.",
 };
 
 export default function UsoEticoPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-10 px-4 py-12 sm:px-6 lg:px-10">
       <header className="space-y-4">
-        <h1 className="text-3xl font-semibold text-slate-900">Uso Ético dos Sinais Regionais do VetAlert</h1>
+        <h1 className="text-3xl font-semibold text-slate-900">Uso Ético dos Sinais Regionais (VetAlert + SAPSA)</h1>
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
           Documento institucional de uso de dados sanitários observacionais
         </p>
         <p className="max-w-3xl text-base text-slate-700">
-          Esta página apresenta os princípios de uso da infraestrutura de sinais do Vet Alert Brasil, com linguagem
+          Esta página apresenta os princípios de uso da infraestrutura de sinais VetAlert + SAPSA, com linguagem
           institucional, neutra e orientada à integridade informacional.
         </p>
       </header>

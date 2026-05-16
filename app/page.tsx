@@ -1,8 +1,9 @@
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { BRANDING } from "../lib/branding";
 
 export const metadata = {
-  title: "Vet Alert Brasil | Painel situacional clínico",
+  title: `${BRANDING.intake.productLong} + ${BRANDING.intelligence.product} | Leitura situacional`,
   description:
     "Análise agregada e observacional de registros clínicos anonimizados por veterinários.",
 };
@@ -12,7 +13,7 @@ export default function Home() {
     <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 py-12 sm:px-6 lg:gap-12 lg:px-10 lg:py-16">
       <section className="space-y-4">
         <h1 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-          Painel situacional clínico — visão compartilhada entre veterinários.
+          VetAlert para registro de sinais. SAPSA para leitura de inteligência regional.
         </h1>
         <p className="max-w-2xl text-base text-slate-700 sm:text-lg">
           Sinais clínicos descritivos registrados de forma anônima por veterinários da sua região, no período selecionado.
@@ -40,16 +41,16 @@ export default function Home() {
         </Card>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button href="/alerta/novo" className="w-full sm:w-auto px-6 py-3 text-base">
-            Sinal Veterinário
+            {BRANDING.intake.navLabelVet}
           </Button>
           <Button href="/agro-signals/new" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
-            Sinal de Campo
+            {BRANDING.intake.navLabelAgro}
           </Button>
           <Button href="/global-alerts-dashboard" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
-            Inteligência de Alertas
+            {BRANDING.intelligence.navLabelDashboard}
           </Button>
           <Button href="/terminal" variant="secondary" className="w-full sm:w-auto px-6 py-3 text-base">
-            Terminal ao Vivo
+            {BRANDING.intelligence.navLabelTerminal}
           </Button>
         </div>
       </section>

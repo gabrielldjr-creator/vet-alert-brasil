@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { GlobalAlertsDashboard } from "../../components/vet-panel/GlobalAlertsDashboard";
+import { BRANDING } from "../../lib/branding";
 
 export const metadata = {
-  title: "Painel Global de Alertas | Vet Alert Brasil",
+  title: `Painel Global de Alertas | ${BRANDING.intelligence.productLong}`,
   description: "Dados sanitários estruturados por região, espécie e classificação.",
 };
 

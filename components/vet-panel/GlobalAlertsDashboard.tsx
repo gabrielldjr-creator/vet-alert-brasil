@@ -7,6 +7,7 @@ import { Card } from "../Card";
 import { auth, db } from "../../lib/firebase";
 import { stateOptions } from "../../lib/regions";
 import { AlertRecord } from "./types";
+import { BRANDING } from "../../lib/branding";
 
 type RegionScope = "global" | "country" | "state";
 type TimeWindow = "7d" | "30d" | "90d" | "custom";
@@ -54,8 +55,14 @@ const toNumber = (value: unknown) => {
 type AlertRecordExtended = AlertRecord & { confidenceScore?: number | string; source?: string; signalType?: string };
 
 const getSourceLabel = (source?: string) => {
-  if (source === "agro_retail") return "Sinal de Campo";
-  return "Sinal Veterinário";
+  if (source === "agro_retail") return "VetAlert • Sinal de Campo";
+  return "VetAlert • Sinal Veterinário";
+};
+
+const getRecordOriginLabel = (source?: string) => {
+  if (source === "agro_retail") return "Coleta VetAlert (campo)";
+  if (source === "pilot") return "Coleta VetAlert (clínica)";
+  return source || "Origem não informada";
 };
 
 function AlertExpandedView({ alert }: { alert: AlertRecord }) {
@@ -72,7 +79,7 @@ function AlertExpandedView({ alert }: { alert: AlertRecord }) {
     { label: "Casos", value: alert.cases ?? "Não informado" },
     { label: "Rebanho", value: alert.herdCount ?? alert.context?.herdCountLabel ?? "Não informado" },
     { label: "Confiança", value: record.confidenceScore ?? "Não informado" },
-    { label: "Origem do registro", value: record.source ?? "Não informado" },
+    { label: "Origem do registro", value: getRecordOriginLabel(record.source) },
     { label: "Prescrição veterinária", value: String((alert.context as { retailSignal?: { veterinaryPrescription?: string } } | undefined)?.retailSignal?.veterinaryPrescription ?? "Não informado") },
     { label: "Produto vendido", value: String((alert.context as { retailSignal?: { productSold?: string } } | undefined)?.retailSignal?.productSold ?? "Não informado") },
     { label: "Categoria do produto", value: String((alert.context as { retailSignal?: { productCategory?: string } } | undefined)?.retailSignal?.productCategory ?? "Não informado") },
@@ -328,13 +335,20 @@ export function GlobalAlertsDashboard() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-slate-900">Painel Global de Alertas</h1>
-        <p className="text-base text-slate-600">Dados sanitários estruturados por região, espécie e classificação</p>
+        <h1 className="text-3xl font-semibold text-slate-900">{BRANDING.intelligence.productLong} • Painel de Inteligência</h1>
+        <p className="text-base text-slate-600">Camada analítica SAPSA com leitura agregada dos sinais coletados no VetAlert.</p>
       </header>
 
+      <Card className="border-slate-200 bg-slate-50/80 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Contexto de leitura</p>
+        <p className="mt-1 text-sm text-slate-700">
+          Este painel é de inteligência (SAPSA): utiliza apenas dados já registrados no VetAlert, sem alterar registros de
+          entrada, sem reclassificar persistência e sem afetar fluxos de captação.
+        </p>
+      </Card>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {[{ label: "Registros", value: analytics.totals.registros }, { label: "Estados cobertos", value: analytics.totals.estados }, { label: "Espécies", value: analytics.totals.especies }, { label: "Tipos de alerta", value: analytics.totals.tipos }, { label: "Casos informados", value: analytics.totals.casos }].map((kpi) => (
+        {[{ label: "Registros analisados", value: analytics.totals.registros }, { label: "Estados cobertos", value: analytics.totals.estados }, { label: "Espécies monitoradas", value: analytics.totals.especies }, { label: "Tipos de sinal", value: analytics.totals.tipos }, { label: "Casos informados", value: analytics.totals.casos }].map((kpi) => (
           <Card key={kpi.label} className="p-4">
             <p className="text-xs uppercase tracking-wide text-slate-500">{kpi.label}</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{kpi.value}</p>
@@ -343,6 +357,10 @@ export function GlobalAlertsDashboard() {
       </section>
 
       <Card className="p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-slate-900">Filtros de inteligência</p>
+          <p className="text-xs text-slate-500">Seleção analítica sem impacto na coleta VetAlert.</p>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <label className="space-y-1 text-sm text-slate-700">
             <span>Região</span>
@@ -402,11 +420,11 @@ export function GlobalAlertsDashboard() {
           </label>
 
           <label className="space-y-1 text-sm text-slate-700">
-            <span>Fonte do sinal</span>
+            <span>Canal de coleta (VetAlert)</span>
             <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2" value={filters.sourceType} onChange={(e) => setFilters((p) => ({ ...p, sourceType: e.target.value as "all" | "veterinary" | "field_retail" }))}>
               <option value="all">Todas</option>
-              <option value="veterinary">Sinal Veterinário</option>
-              <option value="field_retail">Sinal de Campo</option>
+              <option value="veterinary">VetAlert • Sinal Veterinário</option>
+              <option value="field_retail">VetAlert • Sinal de Campo</option>
             </select>
           </label>
 
@@ -462,13 +480,13 @@ export function GlobalAlertsDashboard() {
 
       <Card className="p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm text-slate-700">Registros no período selecionado: {sortableAlerts.length}</p>
+          <p className="text-sm text-slate-700">Registros elegíveis no período selecionado: {sortableAlerts.length}</p>
           <div className="flex gap-2">
             <button type="button" onClick={() => setViewMode("table")} className={`rounded-lg border px-3 py-1.5 text-sm ${viewMode === "table" ? "border-emerald-500 bg-emerald-50" : "border-slate-200"}`}>
-              Tabela
+              Tabela analítica
             </button>
             <button type="button" onClick={() => setViewMode("cards")} className={`rounded-lg border px-3 py-1.5 text-sm ${viewMode === "cards" ? "border-emerald-500 bg-emerald-50" : "border-slate-200"}`}>
-              Cards
+              Cards executivos
             </button>
           </div>
         </div>
@@ -582,7 +600,7 @@ export function GlobalAlertsDashboard() {
       </Card>
 
       <Card className="p-4">
-        <p className="mb-3 text-sm font-semibold text-slate-900">Densidade geográfica (contagem por estado)</p>
+        <p className="mb-3 text-sm font-semibold text-slate-900">Densidade geográfica SAPSA (contagem por estado)</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           {analytics.byState.map((entry) => (
             <div key={entry.label} className="rounded-lg border border-slate-200 p-2 text-xs text-slate-700">

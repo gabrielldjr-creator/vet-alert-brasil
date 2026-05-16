@@ -1,9 +1,9 @@
 import { Card } from "../../components/Card";
 
 export const metadata = {
-  title: "Privacidade | Vet Alert Brasil",
+  title: "Privacidade | VetAlert + SAPSA",
   description:
-    "Registros são sinais anônimos e restritos a veterinários autenticados via link mágico. Estado do CRMV define o escopo regional exibido.",
+    "Regras de privacidade para VetAlert (intake) e SAPSA (inteligência), mantendo dados observacionais agregados e anonimização.",
 };
 
 export default function PrivacyPage() {
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-slate-900">1. QUEM SOMOS</h2>
           <p>
-            Vet Alert Brasil é um projeto independente de leitura situacional veterinária, de caráter experimental e
+            VetAlert (camada de intake) e SAPSA (camada de inteligência) compõem um projeto de leitura situacional veterinária, de caráter experimental e
             colaborativo, com finalidade exclusivamente estatística, preventiva e informativa.
           </p>
           <p className="font-semibold text-slate-800">Responsável pelo projeto e pelo tratamento dos dados:</p>
