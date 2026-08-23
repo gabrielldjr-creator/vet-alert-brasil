@@ -3,8 +3,23 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /alerts/{alertId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      // Preserve the existing payload while reserving trusted downstream metadata.
+      allow create: if request.auth != null
+        && !request.resource.data.keys().hasAny([
+          'submissionId', 'receivedAt', 'schemaVersion', 'sourceChannel', 'integrity',
+          'crmv', 'cpf', 'email', 'phone', 'authUid', 'firebaseUid', 'uid',
+          'latitude', 'longitude', 'coordinates', 'producer', 'farm', 'property'
+        ]);
       allow update, delete: if false;
+    }
+    match /observation_integrity/{alertId} {
+      allow read, write: if false;
+    }
+    match /convergence_results/{resultId} {
+      allow read, write: if false;
+    }
+    match /institutional_validation/{document=**} {
+      allow read, write: if false;
     }
     match /vetProfiles/{profileId} {
       allow read: if request.auth != null;
