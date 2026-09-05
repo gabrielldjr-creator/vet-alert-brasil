@@ -1,13 +1,13 @@
 "use client";
 
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD8fIsNkHdxXMS06HulU5l0CONvsrT8l0Y",
   authDomain: "vet-alert-brasil.firebaseapp.com",
-  projectId: "vet-alert-brasil",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "vet-alert-brasil",
   storageBucket: "vet-alert-brasil.firebasestorage.app",
   messagingSenderId: "687132341294",
   appId: "1:687132341294:web:250963ab8cda6bd47e9bbf",
@@ -21,3 +21,10 @@ export const auth = getAuth(app);
 
 // Firestore
 export const db = getFirestore(app);
+
+// Test-only wiring. Defaults remain production-compatible when the flag is absent.
+if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
+  connectAuthEmulator(auth, `http://${process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1"}:${Number(process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT ?? 9099)}`, { disableWarnings: true });
+  connectFirestoreEmulator(db, process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST ?? "127.0.0.1", Number(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT ?? 8080));
+}
+

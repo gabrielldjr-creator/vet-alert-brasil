@@ -12,6 +12,17 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/.firebase/
+/.cache/
+/.config/
+/.tools/
+/.npm-cache/
+/.tmp-npm/
+/.npm-*.tgz
+/package/
+**/__pycache__/
 
 # next.js
 /.next/
@@ -30,6 +41,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 firebase-debug.log
+firestore-debug.log
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -40,3 +52,4 @@ firebase-debug.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+

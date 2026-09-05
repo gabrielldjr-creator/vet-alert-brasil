@@ -211,7 +211,7 @@ O documento observacional V2 não conterá UID, email, nome, CRMV, telefone, pro
 
 ### Permissões propostas
 
-Os blocos existentes de `firestore.rules` serão preservados byte a byte. Serão acrescentadas regras explícitas `allow read, write: if false` para as três coleções V2. Toda leitura/escrita V2 passa pelo servidor autenticado. Papéis vêm exclusivamente de custom claims verificadas; payloads do cliente não podem definir papel ou organização.
+Os blocos existentes de `firestore.rules` serão preservados byte a byte. Serão acrescentadas negações explícitas `allow get, list, create, update, delete: if false` para as três coleções V2; não há regra ampla `allow read, write`. Toda leitura/escrita V2 passa pelo servidor autenticado. Papéis vêm exclusivamente de custom claims verificadas; payloads do cliente não podem definir papel ou organização.
 
 ## 8. Limitações da auditoria
 
@@ -235,3 +235,4 @@ A fase V2 somente pode ser apresentada como pronta para validação técnica qua
 7. testes, typecheck e build passarem;
 8. falhas conhecidas do lint legado permanecerem claramente separadas;
 9. nenhuma implantação ou migração destrutiva tiver ocorrido.
+

@@ -208,3 +208,23 @@ Ao fim desta implementação, a decisão solicitada será:
 > “Você aprova promover o fluxo V2, atualmente isolado e desativado, para substituir o comportamento padrão de `/alerta/novo`, definir o destino do legado `alerts` e aplicar as mudanças correspondentes de navegação, permissões e configuração de produção?”
 
 Até uma resposta explícita e específica, nenhuma dessas ações será executada.
+
+## 10. Resultado da fase de validação autorizada
+
+- Firebase Emulator Suite adicionada para Auth e Firestore no projeto demo `demo-vetalert-v2`; nenhum projeto ou dado de produção é utilizado.
+- Testes dinâmicos cobrem usuário não autenticado, veterinário, analista SAPSA e administrador, inclusive tentativas de acesso indevido.
+- O fluxo legado foi submetido de ponta a ponta no emulador e o documento em `alerts` foi conferido nos campos existentes.
+- O V2 foi submetido em browser real ao emulador, incluindo falha de rede, refresh, retorno entre etapas, teclado, viewport móvel e clique duplo.
+- Dois deployments Vercel de preview foram solicitados em ordem, primeiro com flag false e depois true, usando configuração por deployment e sem alterar settings do projeto/produção. A verificação final ficou bloqueada porque a credencial de leitura do conector não tem acesso ao scope `colo-prep-ia`; detalhes em `docs/v2-validation-report.md`.
+
+## 11. Tratamento futuro de `alerts`
+
+Nenhuma opção abaixo está aprovada ou executada. A ordem recomendada é manter o histórico imutável e decidir uma camada de leitura:
+
+1. **Congelar e separar:** `alerts` permanece canônica apenas para o legado; dashboards antigos continuam nela e SAPSA V2 ignora seu conteúdo. Menor risco, sem continuidade analítica combinada.
+2. **Adaptador de leitura:** um processo server-side transforma registros legados apenas em memória, descarta texto, localidade aproximada e campos comerciais/identificáveis, marca `sourceSchema=legacy` e aplica small-cell suppression. Não regrava documentos. É a opção preferida para uma validação inicial.
+3. **Cópia sanitizada:** somente após revisão jurídica e amostragem, um job idempotente copia allowlist segura para namespace derivado, registra versão e perda de informação e nunca altera o original. Exige aprovação separada.
+4. **Backfill ou exclusão:** não recomendado para o cutover inicial e proibido sem migração aprovada, backup validado, ensaio em cópia e autorização destrutiva específica.
+
+O rollback antes do cutover consiste em manter a flag false/ausente e reverter somente o PR V2. Se um preview estiver ativo, ele pode expirar ou ser removido separadamente; nenhum alias/domínio de produção foi promovido. Coleções V2 eventualmente criadas não devem ser apagadas automaticamente: bloquear novas escritas, preservar evidência de auditoria e aplicar a política de retenção aprovada.
+

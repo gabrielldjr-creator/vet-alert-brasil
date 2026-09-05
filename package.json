@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node -r ./tests/node-os-shim.cjs --import tsx --test tests/*.test.ts"
+    "test": "node -r ./tests/node-os-shim.cjs --import tsx --test tests/*.test.ts",
+    "test:emulator": "node -r ./tests/node-os-shim.cjs ./node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --project demo-vetalert-v2 --only auth,firestore \"node -r ./tests/node-os-shim.cjs --import tsx --test tests/emulator/*.test.ts\"",
+    "test:e2e": "node -r ./tests/node-os-shim.cjs ./node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --project demo-vetalert-v2 --only auth,firestore \"node -r ./tests/node-os-shim.cjs ./tests/run-browser-e2e.cjs\""
   },
   "dependencies": {
     "firebase": "^12.7.0",
@@ -18,14 +20,18 @@
     "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "firebase-tools": "15.29.0",
     "tailwindcss": "^4",
     "tsx": "4.23.13",
     "typescript": "^5"
   }
 }
+

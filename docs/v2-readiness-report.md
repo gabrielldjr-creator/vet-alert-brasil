@@ -2,6 +2,8 @@
 
 Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 
+> Atualização da fase seguinte: a validação com Firebase Emulator e Chromium foi concluída. O resultado detalhado e mais recente está em `docs/v2-validation-report.md`; ele substitui as pendências de emulador/browser registradas na primeira versão deste documento.
+
 ## Escopo entregue
 
 - Auditoria de código e metadados, inventário do repositório e plano de migração criados antes da implementação.
@@ -28,8 +30,8 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 | MAPA | PASS no V2 | Orientação neutra; sem integração/envio oficial automático e sem alegação de endosso. Legado permanece inalterado. |
 | Build/typecheck/testes V2 | PASS | Build, TypeScript, lint do novo código e 16 testes passam. |
 | Lint total | FAIL preexistente | Cinco erros e três avisos permanecem no `AlertFormClient.tsx` protegido; não foram introduzidos nem corrigidos nesta fase. |
-| Browser | PASS parcial | Welcome, “Como funciona”, confiança/uso, configuração mínima, labels, botões, privacidade, ausência de overlay e console errors verificados localmente. |
-| Firebase E2E/regras dinâmicas | NÃO EXECUTADO | Não há Firebase Emulator/configuração de integração no repositório; nenhuma gravação real foi feita para evitar dados/deploy de produção. |
+| Browser | PASS no emulador | 4 cenários Chromium cobrem V2, legado, rotas, mobile, teclado, falha, refresh, back e clique duplo. |
+| Firebase E2E/regras dinâmicas | PASS no emulador | Auth/Firestore demo, 7 grupos: papéis, rules, schema, HMAC, integridade, agregação e export. |
 
 ## Verificações executadas
 
@@ -38,7 +40,8 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 - ESLint de `app/v2`, `app/sapsa`, `app/api`, `lib/v2`, `tests`: PASS.
 - Next.js production build: PASS; todas as rotas legadas e V2 compiladas.
 - Python `compileall backend`: PASS.
-- Browser local: PASS parcial conforme tabela.
+- Browser local: 4/4 PASS com Firebase Emulator.
+- Firebase Emulator: 7/7 PASS.
 - `git diff --check`: PASS.
 - Lint de source total: somente o delta preexistente de 5 erros/3 avisos no intake protegido.
 
@@ -61,13 +64,13 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 
 ## Riscos e dependências restantes
 
-- Testar criação/transação, regras Firestore e RBAC com Firebase Emulator e depois em projeto não produtivo.
+- Repetir criação/transação, rules e RBAC em staging não produtivo real antes de qualquer cutover.
 - Configurar service account mínima, segredo HMAC gerenciado, custom claims e rotação; não usar segredo de produção em preview local.
 - Ativar e verificar TTL separadamente; `expiresAt` sozinho não apaga dados.
 - Auditar retenção/redação de logs em Vercel, Firebase, proxies, suporte e backups.
 - Aprovar juridicamente textos, consentimento, base legal, atendimento a direitos e limites de precisão territorial.
 - Validar minimum cell 5 e thresholds exploratórios; não tratá-los como evidência científica.
-- Executar testes mobile/teclado mais amplos e um submit E2E nos dois fluxos em ambiente de teste. O fluxo legado não foi submetido ao vivo para não criar observação sanitária falsa.
+- Adicionar submissão browser dedicada do fluxo agro; o intake veterinário legado e o V2 já foram submetidos somente no emulador, sem observação sanitária em produção.
 - Resolver vulnerabilidades reportadas no grafo npm em trabalho separado, com análise de compatibilidade.
 
 ## Decisão exata necessária para cutover
@@ -75,3 +78,4 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 > Você aprova promover o fluxo V2, atualmente isolado e desativado, para substituir o comportamento padrão de `/alerta/novo`, definir o destino do legado `alerts` e aplicar as mudanças correspondentes de navegação, permissões e configuração de produção?
 
 Até aprovação explícita dessa decisão e conclusão dos testes Firebase E2E, não alterar a rota padrão, não habilitar a flag e não implantar em produção.
+

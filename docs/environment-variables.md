@@ -14,3 +14,10 @@
 | `VETALERT_V2_MINIMUM_CELL` | não | 5 (3–20) |
 
 Não expor segredos com `NEXT_PUBLIC_`. Não alterar variáveis Vercel de produção nesta fase. Preview deve usar privilégio mínimo e projeto/namespace separado.
+
+## Ambiente de teste isolado
+
+`firebase.json` e `.firebaserc` fixam o projeto demo `demo-vetalert-v2`, com Auth em `127.0.0.1:9099` e Firestore em `127.0.0.1:8080`. O runner define `FIREBASE_AUTH_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST`, `GCLOUD_PROJECT`, `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` e `NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-vetalert-v2`. Essas variáveis são exclusivas dos testes e não devem ser copiadas para produção.
+
+O segredo HMAC dos testes é um valor descartável, definido somente no processo local. Em preview/staging real, usar secret gerenciado, diferente de produção, com no mínimo 32 caracteres e rotação documentada. A aplicação falha fechada (`503`) quando o segredo está ausente ou curto.
+

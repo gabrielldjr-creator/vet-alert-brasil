@@ -41,5 +41,7 @@ test("V2 is a separate route and persistence contract", () => {
 test("legacy Firestore permissions are preserved and V2 is client-denied", () => {
   const rules = read("firestore.rules");
   assert.match(rules, /match \/alerts\/\{alertId\}[\s\S]*allow read: if request\.auth != null;[\s\S]*allow create: if request\.auth != null;[\s\S]*allow update, delete: if false;/);
-  for (const collection of ["veterinaryObservationsV2", "submissionIntegrityV2", "auditLogsV2"]) assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{[\\s\\S]*?allow read, write: if false;`));
+  for (const collection of ["veterinaryObservationsV2", "submissionIntegrityV2", "auditLogsV2"]) assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{[\\s\\S]*?allow get, list, create, update, delete: if false;`));
+  assert.doesNotMatch(rules, /allow\s+read\s*,\s*write/);
 });
+

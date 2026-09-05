@@ -12,7 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Workspace-local tool runtimes used by the validation harness:
+    ".tools/**",
+    ".tmp-npm/**",
+    "package/**",
   ]),
 ]);
 
 export default eslintConfig;
+
