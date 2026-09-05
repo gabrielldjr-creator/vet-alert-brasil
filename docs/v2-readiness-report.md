@@ -78,4 +78,3 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 > Você aprova promover o fluxo V2, atualmente isolado e desativado, para substituir o comportamento padrão de `/alerta/novo`, definir o destino do legado `alerts` e aplicar as mudanças correspondentes de navegação, permissões e configuração de produção?
 
 Até aprovação explícita dessa decisão e conclusão dos testes Firebase E2E, não alterar a rota padrão, não habilitar a flag e não implantar em produção.
-

@@ -76,4 +76,3 @@ Ambos foram enviados como target `preview`, com variável aplicada no artefato d
 ## Gate de decisão
 
 Esta fase para sem cutover. A decisão futura precisa aprovar separada e explicitamente: substituição de `/alerta/novo`, tratamento de `alerts`, navegação, permissões de produção e flag de produção. Até isso ocorrer, o V2 permanece draft, isolado e desativado por padrão.
-

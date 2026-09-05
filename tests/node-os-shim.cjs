@@ -9,4 +9,3 @@ os.userInfo = () => ({
   homedir: process.cwd(),
   shell: null,
 });
-

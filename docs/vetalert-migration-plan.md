@@ -227,4 +227,3 @@ Nenhuma opção abaixo está aprovada ou executada. A ordem recomendada é mante
 4. **Backfill ou exclusão:** não recomendado para o cutover inicial e proibido sem migração aprovada, backup validado, ensaio em cópia e autorização destrutiva específica.
 
 O rollback antes do cutover consiste em manter a flag false/ausente e reverter somente o PR V2. Se um preview estiver ativo, ele pode expirar ou ser removido separadamente; nenhum alias/domínio de produção foi promovido. Coleções V2 eventualmente criadas não devem ser apagadas automaticamente: bloquear novas escritas, preservar evidência de auditoria e aplicar a política de retenção aprovada.
-

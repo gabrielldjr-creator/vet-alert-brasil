@@ -48,4 +48,3 @@ run().catch((error) => {
   process.exitCode = 1;
   server.kill("SIGTERM");
 });
-

@@ -180,4 +180,3 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
 
   await rulesEnvironment.cleanup();
 });
-

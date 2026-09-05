@@ -131,4 +131,3 @@ test("protected legacy veterinarian flow still authenticates anonymously and wri
   expect(fields).toHaveProperty("source.stringValue", "pilot");
   expect(fields).toHaveProperty("context.mapValue");
 });
-

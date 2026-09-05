@@ -44,4 +44,3 @@ test("legacy Firestore permissions are preserved and V2 is client-denied", () =>
   for (const collection of ["veterinaryObservationsV2", "submissionIntegrityV2", "auditLogsV2"]) assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{[\\s\\S]*?allow get, list, create, update, delete: if false;`));
   assert.doesNotMatch(rules, /allow\s+read\s*,\s*write/);
 });
-

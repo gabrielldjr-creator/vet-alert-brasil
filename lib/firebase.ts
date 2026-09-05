@@ -27,4 +27,3 @@ if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
   connectAuthEmulator(auth, `http://${process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1"}:${Number(process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_PORT ?? 9099)}`, { disableWarnings: true });
   connectFirestoreEmulator(db, process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST ?? "127.0.0.1", Number(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT ?? 8080));
 }
-

@@ -235,4 +235,3 @@ A fase V2 somente pode ser apresentada como pronta para validação técnica qua
 7. testes, typecheck e build passarem;
 8. falhas conhecidas do lint legado permanecerem claramente separadas;
 9. nenhuma implantação ou migração destrutiva tiver ocorrido.
-
