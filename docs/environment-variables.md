@@ -17,6 +17,7 @@
 | `VETALERT_V2_EMERGING_THRESHOLD` | não | 6 (3–100), nunca abaixo do limiar anterior |
 | `VETALERT_V2_SUSTAINED_THRESHOLD` | não | 8 (3–100), nunca abaixo do limiar anterior |
 | `VETALERT_V2_MAX_AGGREGATE_RECORDS` | não | 5000 (100–50000); exceder faz o resumo falhar fechado |
+| `VETALERT_V2_OFFICIAL_CHANNEL_URL` | não | página oficial e-SISBRAVET do MAPA; valor vazio oculta o link e outro valor exige HTTPS em host governamental permitido |
 
 Não expor segredos com `NEXT_PUBLIC_`. Não alterar variáveis Vercel de produção nesta fase. Preview deve usar privilégio mínimo e projeto/namespace separado.
 
@@ -27,3 +28,5 @@ Não expor segredos com `NEXT_PUBLIC_`. Não alterar variáveis Vercel de produ�
 O segredo HMAC dos testes é um valor descartável, definido somente no processo local. Em preview/staging real, usar secret gerenciado, diferente de produção, com no mínimo 32 caracteres e rotação documentada. A aplicação falha fechada (`503`) quando o segredo está ausente ou curto. `VETALERT_V2_INTEGRITY_KEY_VERSION` deve mudar junto com o segredo para permitir auditoria sem registrar a chave. A implementação atual não consulta simultaneamente uma chave anterior; uma rotação dentro da janela de duplicidade cria uma lacuna de correlação e precisa de runbook aprovado antes do piloto.
 
 As consultas de integridade dependem dos índices compostos versionados em `firestore.indexes.json`. Criá-los em preview/staging não autoriza alteração de índices ou configuração de produção.
+
+`VETALERT_V2_OFFICIAL_CHANNEL_URL` configura somente um link que o usuário pode abrir voluntariamente. O navegador não acessa essa URL em segundo plano, a submissão não a chama e nenhum dado do registro é transmitido ao destino. A URL default é a página oficial pública do e-SISBRAVET no MAPA; overrides são validados no servidor contra uma allowlist de hosts governamentais. Um valor vazio ou inválido oculta o botão.

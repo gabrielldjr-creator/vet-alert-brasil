@@ -7,6 +7,7 @@ const serverEnvironment = {
   VETALERT_V2_INTEGRITY_SECRET: "browser-emulator-only-secret-at-least-32-chars",
   VETALERT_V2_MAX_SUBMISSIONS: "10",
   VETALERT_V2_MINIMUM_CELL: "5",
+  VETALERT_V2_OFFICIAL_CHANNEL_URL: "https://sistemasweb.agricultura.gov.br/pages/SISBRAVET.html",
   NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "true",
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-vetalert-v2",
 };

@@ -17,6 +17,21 @@ function safeKeyVersion(value: string | undefined) {
   return value && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value) ? value : "integrity-key-v1";
 }
 
+const officialChannelHosts = new Set(["gov.br", "www.gov.br", "sistemasweb.agricultura.gov.br"]);
+const defaultOfficialChannelUrl = "https://sistemasweb.agricultura.gov.br/pages/SISBRAVET.html";
+
+export function getV2OfficialChannelUrl(environment: Environment = process.env) {
+  const value = environment.VETALERT_V2_OFFICIAL_CHANNEL_URL;
+  if (value === undefined) return defaultOfficialChannelUrl;
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && officialChannelHosts.has(url.hostname) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function getV2Policy(environment: Environment = process.env) {
   const minimumAggregateCell = boundedInteger(environment.VETALERT_V2_MINIMUM_CELL, 5, 3, 20);
   const recurringThreshold = Math.max(minimumAggregateCell, boundedInteger(environment.VETALERT_V2_RECURRING_THRESHOLD, 5, 3, 100));
