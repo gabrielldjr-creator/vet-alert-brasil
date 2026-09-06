@@ -8,7 +8,7 @@ function csvValue(value: string | number) {
 }
 
 export function renderSapsaCsv(summary: SapsaSummary) {
-  const rows: Array<Array<string | number>> = [["stateCode", "species", "signalGroup", "observationCount", "municipalityCount", "periods", "classification", "methodologyVersion"]];
-  for (const cell of summary.cells) rows.push([cell.stateCode, cell.species, cell.signalGroup, cell.observationCount, cell.municipalityCount, cell.periods.join("|"), cell.classification, summary.methodology.version]);
+  const rows: Array<Array<string | number>> = [["stateCode", "species", "signalGroup", "observationCount", "municipalityCount", "periods", "sourceChannelCount", "suspiciousRecordsExcluded", "classification", "methodologyVersion"]];
+  for (const cell of summary.cells) rows.push([cell.stateCode, cell.species, cell.signalGroup, cell.observationCount, cell.municipalityCount, cell.periods.join("|"), cell.sourceChannelCount, cell.explanation.suspiciousRecordsExcluded, cell.classification, summary.methodology.version]);
   return rows.map((row) => row.map(csvValue).join(",")).join("\r\n");
 }

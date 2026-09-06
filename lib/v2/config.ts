@@ -13,13 +13,26 @@ function boundedInteger(value: string | undefined, fallback: number, min: number
   return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
 }
 
+function safeKeyVersion(value: string | undefined) {
+  return value && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value) ? value : "integrity-key-v1";
+}
+
 export function getV2Policy(environment: Environment = process.env) {
+  const minimumAggregateCell = boundedInteger(environment.VETALERT_V2_MINIMUM_CELL, 5, 3, 20);
+  const recurringThreshold = Math.max(minimumAggregateCell, boundedInteger(environment.VETALERT_V2_RECURRING_THRESHOLD, 5, 3, 100));
+  const emergingThreshold = Math.max(recurringThreshold, boundedInteger(environment.VETALERT_V2_EMERGING_THRESHOLD, 6, 3, 100));
+  const sustainedThreshold = Math.max(emergingThreshold, boundedInteger(environment.VETALERT_V2_SUSTAINED_THRESHOLD, 8, 3, 100));
   return {
     observationRetentionDays: boundedInteger(environment.VETALERT_V2_RETENTION_DAYS, 365, 30, 3650),
     integrityRetentionDays: boundedInteger(environment.VETALERT_V2_INTEGRITY_RETENTION_DAYS, 30, 1, 365),
     rateWindowMinutes: boundedInteger(environment.VETALERT_V2_RATE_WINDOW_MINUTES, 10, 1, 60),
     maxSubmissionsPerWindow: boundedInteger(environment.VETALERT_V2_MAX_SUBMISSIONS, 10, 2, 100),
     duplicateWindowHours: boundedInteger(environment.VETALERT_V2_DUPLICATE_WINDOW_HOURS, 24, 1, 168),
-    minimumAggregateCell: boundedInteger(environment.VETALERT_V2_MINIMUM_CELL, 5, 3, 20),
+    minimumAggregateCell,
+    recurringThreshold,
+    emergingThreshold,
+    sustainedThreshold,
+    maximumAggregateRecords: boundedInteger(environment.VETALERT_V2_MAX_AGGREGATE_RECORDS, 5000, 100, 50000),
+    integrityKeyVersion: safeKeyVersion(environment.VETALERT_V2_INTEGRITY_KEY_VERSION),
   } as const;
 }

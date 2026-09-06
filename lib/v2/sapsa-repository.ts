@@ -7,13 +7,21 @@ import { hmacDigest } from "./security";
 export async function loadSapsaSummary() {
   const db = getAdminFirestore();
   const cutoff = Timestamp.fromMillis(Date.now() - 90 * 86400000);
-  const snapshot = await db.collection("veterinaryObservationsV2").where("receivedAt", ">=", cutoff).limit(5000).get();
+  const policy = getV2Policy();
+  const snapshot = await db.collection("veterinaryObservationsV2").where("receivedAt", ">=", cutoff).limit(policy.maximumAggregateRecords + 1).get();
+  if (snapshot.size > policy.maximumAggregateRecords) {
+    throw new Error("SAPSA aggregate record limit exceeded; refusing an incomplete summary");
+  }
   const records = snapshot.docs.map((doc) => {
     const data = doc.data();
     return { receivedAt: data.receivedAt.toDate(), territory: data.territory, species: data.species, signalGroup: data.signalGroup, source: data.sourceChannel ?? data.source, qualityFlags: data.qualityFlags };
   });
-  const policy = getV2Policy();
-  return buildSapsaSummary(records, { minimumCell: policy.minimumAggregateCell, recurring: 2, emerging: 3, sustained: 5 });
+  return buildSapsaSummary(records, {
+    minimumCell: policy.minimumAggregateCell,
+    recurring: policy.recurringThreshold,
+    emerging: policy.emergingThreshold,
+    sustained: policy.sustainedThreshold,
+  });
 }
 
 export async function auditSapsaExport(authenticatedUid: string, rowCount: number) {
@@ -25,6 +33,7 @@ export async function auditSapsaExport(authenticatedUid: string, rowCount: numbe
     occurredAt: Timestamp.fromDate(now),
     expiresAt: Timestamp.fromMillis(now.getTime() + policy.integrityRetentionDays * 86_400_000),
     schemaVersion: 2,
+    integrityKeyVersion: policy.integrityKeyVersion,
     outcome: "exported",
     rowCount,
   });

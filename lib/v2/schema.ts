@@ -38,7 +38,7 @@ export type V2ValidationResult =
   | { ok: true; value: VeterinaryObservationV2Input }
   | { ok: false; errors: string[] };
 
-const prohibitedKey = /^(name|nome|veterinarianname|nomeveterinario|crmv|cpf|email|phone|telefone|producer|produtor|farm|fazenda|property|propriedade|address|endereco|latitude|longitude|coordinates|coordenadas|ip|ipaddress|useragent|device|dispositivo|brand|marca|manufacturer|fabricante|product|produto|productsold|notes?|notas?|freetext|uid|authuid|role|organization|submissionid|receivedat|schemaversion|source|sourcechannel|integrity|integritystatus|qualityflags|expiresat)$/i;
+const prohibitedKey = /^(name|nome|veterinarianname|nomeveterinario|crmv|cpf|email|phone|telefone|producer|produtor|farm|fazenda|property|propriedade|company|empresa|organization|organizacao|address|endereco|gps|latitude|longitude|coordinates|coordenadas|ip|ipaddress|useragent|device|dispositivo|brand|marca|manufacturer|fabricante|product|produto|productsold|notes?|notas?|freetext|uid|authuid|role|submissionid|receivedat|schemaversion|source|sourcechannel|integrity|integritystatus|qualityflags|expiresat)$/i;
 
 function normalizeKey(key: string) {
   return key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, "");

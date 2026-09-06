@@ -21,4 +21,7 @@ test("SAPSA permits only server-verified institutional roles", () => {
 test("privacy thresholds are bounded", () => {
   assert.equal(getV2Policy({ VETALERT_V2_MINIMUM_CELL: "1" }).minimumAggregateCell, 5);
   assert.equal(getV2Policy({ VETALERT_V2_RETENTION_DAYS: "99999" }).observationRetentionDays, 365);
+  const policy = getV2Policy({ VETALERT_V2_MINIMUM_CELL: "8", VETALERT_V2_RECURRING_THRESHOLD: "3", VETALERT_V2_EMERGING_THRESHOLD: "4", VETALERT_V2_SUSTAINED_THRESHOLD: "7" });
+  assert.deepEqual([policy.recurringThreshold, policy.emergingThreshold, policy.sustainedThreshold], [8, 8, 8]);
+  assert.equal(getV2Policy({ VETALERT_V2_INTEGRITY_KEY_VERSION: "invalid key" }).integrityKeyVersion, "integrity-key-v1");
 });

@@ -17,6 +17,7 @@ async function reachObservationForm(page: Page) {
   await page.getByLabel("Espécie ou grupo de produção").selectOption("bovinos");
   await page.getByRole("button", { name: "Continuar para o registro" }).click();
   await expect(page.getByText("Etapa 1 de 3")).toBeVisible();
+  await expect(page.getByText("Etapa 1 de 3").locator("..")).toBeFocused();
 }
 
 async function reachReview(page: Page) {
@@ -69,10 +70,36 @@ test("network failure keeps the observation unsent and refresh returns safely to
   await reachReview(page);
   await page.route("**/api/v2/observations", (route) => route.abort("failed"));
   await page.getByRole("button", { name: "Enviar observação" }).click();
-  await expect(page.getByText(/Seus dados não foram enviados/)).toBeVisible();
+  const submissionError = page.getByText(/Seus dados não foram enviados/);
+  await expect(submissionError).toBeVisible();
+  await expect(submissionError).toBeFocused();
   await expect(page).toHaveURL(/\/v2\/onboarding$/);
   await page.reload();
   await expect(page.getByRole("button", { name: "Começar" })).toBeVisible();
+});
+
+test("territory lookup failure is announced and municipality remains optional", async ({ page }) => {
+  await page.route("**/api/v2/territories?*", (route) => route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ error: "territory_lookup_failed" }) }));
+  await page.goto("/v2/onboarding");
+  await page.getByRole("button", { name: "Começar" }).click();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByLabel("Território de atuação (UF)").selectOption("SC");
+  await page.getByLabel("Espécie ou grupo de produção").selectOption("bovinos");
+  await page.getByRole("button", { name: "Continuar para o registro" }).click();
+  await page.getByLabel("Manifestação observada").selectOption("manifestacao_respiratoria_observada");
+  await page.getByLabel("Faixa de animais envolvidos").selectOption("2_5");
+  await page.getByLabel("Nível de atenção percebido").selectOption("observed");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("município continua opcional");
+  await expect(page.getByLabel("Município (opcional)")).toHaveValue("");
+  await page.getByLabel("Período da observação").selectOption("ultimos_7d");
+  await expect(page.getByRole("button", { name: "Continuar", exact: true })).toBeEnabled();
+});
+
+test("SAPSA UI denies an unauthenticated browser and exposes no raw record fields", async ({ page }) => {
+  await page.goto("/sapsa/v2");
+  await expect(page.getByRole("heading", { name: "Acesso não autorizado" })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(/submissionId|originDigest|fingerprint|municipalityCode|receivedAt/);
 });
 
 test("legacy and agro registration routes remain available while V2 is isolated", async ({ page }) => {

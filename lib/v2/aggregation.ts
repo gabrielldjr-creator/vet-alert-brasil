@@ -19,15 +19,15 @@ function weekBucket(date: Date) {
 }
 
 export function buildSapsaSummary(records: AggregateObservation[], thresholds: AggregationThresholds) {
-  const eligible = records.filter((record) => !record.qualityFlags?.duplicateSuspected && !record.qualityFlags?.rateLimitExceeded);
   const grouped = new Map<string, AggregateObservation[]>();
-  for (const record of eligible) {
+  for (const record of records) {
     const key = [record.territory.stateCode, record.species, record.signalGroup].join("|");
     grouped.set(key, [...(grouped.get(key) ?? []), record]);
   }
 
   let suppressedCellCount = 0;
-  const cells = [...grouped.entries()].flatMap(([key, group]) => {
+  const cells = [...grouped.entries()].flatMap(([key, allInCell]) => {
+    const group = allInCell.filter((record) => !record.qualityFlags?.duplicateSuspected && !record.qualityFlags?.rateLimitExceeded);
     if (group.length < thresholds.minimumCell) { suppressedCellCount += 1; return []; }
     const [stateCode, species, signalGroup] = key.split("|");
     const municipalities = new Set(group.map((item) => item.territory.municipalityCode).filter(Boolean));
@@ -38,16 +38,18 @@ export function buildSapsaSummary(records: AggregateObservation[], thresholds: A
     else if (group.length >= thresholds.emerging && municipalities.size >= 2) classification = "emerging_territorial_convergence";
     else if (group.length >= thresholds.recurring) classification = "recurring_signal";
     return [{ stateCode, species, signalGroup, observationCount: group.length, municipalityCount: municipalities.size, periods: [...periods].sort(), sourceChannelCount: sourceChannels.size, classification,
-      explanation: { compatibleRecords: group.length, municipalities: municipalities.size, timeBuckets: periods.size, suspiciousRecordsExcluded: records.length - eligible.length } }];
+      explanation: { compatibleRecords: group.length, municipalities: municipalities.size, timeBuckets: periods.size, suspiciousRecordsExcluded: allInCell.length - group.length } }];
   });
+
+  const eligibleCount = records.filter((record) => !record.qualityFlags?.duplicateSuspected && !record.qualityFlags?.rateLimitExceeded).length;
 
   return {
     label: "Inteligência observacional — padrão para revisão técnica",
     acceptedObservations: records.length >= thresholds.minimumCell ? records.length : null,
-    eligibleObservations: eligible.length >= thresholds.minimumCell ? eligible.length : null,
+    eligibleObservations: eligibleCount >= thresholds.minimumCell ? eligibleCount : null,
     suppressedCellCount,
-    suspiciousRecordsExcluded: records.length - eligible.length,
+    suspiciousRecordsExcluded: records.length - eligibleCount,
     cells,
-    methodology: { version: "sapsa-v2-exploratory-1", scientificallyValidated: false, thresholds },
+    methodology: { version: "sapsa-v2-exploratory-2", scientificallyValidated: false, qualityPolicy: "exclude-duplicate-or-rate-flag-v1", thresholds },
   };
 }
