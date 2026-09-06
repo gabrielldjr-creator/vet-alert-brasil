@@ -13,9 +13,9 @@
     "test:e2e": "node -r ./tests/node-os-shim.cjs ./node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --project demo-vetalert-v2 --only auth,firestore \"node -r ./tests/node-os-shim.cjs ./tests/run-browser-e2e.cjs\""
   },
   "dependencies": {
-    "firebase": "^12.7.0",
+    "firebase": "12.18.0",
     "firebase-admin": "14.3.0",
-    "next": "16.1.1",
+    "next": "16.3.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
@@ -27,7 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.1",
+    "eslint-config-next": "16.3.4",
     "firebase-tools": "15.29.0",
     "tailwindcss": "^4",
     "tsx": "4.23.13",
