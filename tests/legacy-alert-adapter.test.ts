@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import { adaptLegacyAlertInMemory } from "../lib/v2/legacy-alert-adapter";
+
+function sourceFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return sourceFiles(path);
+    return /\.(?:ts|tsx)$/.test(entry.name) ? [path] : [];
+  });
+}
 
 test("legacy adapter returns only the explicit analytical allowlist without mutating raw data", () => {
   const raw = {
@@ -41,4 +51,15 @@ test("legacy adapter rejects unsupported, malformed, or free-text signal categor
   assert.equal(adaptLegacyAlertInMemory({ state: "SC", species: "Bovinos", alertType: "Diagnóstico inventado" }), null);
   assert.equal(adaptLegacyAlertInMemory({ state: "Santa Catarina", species: "Bovinos", alertType: "Síndrome respiratória" }), null);
   assert.equal(adaptLegacyAlertInMemory({ state: "SC", species: "espécie livre", alertType: "Síndrome respiratória" }), null);
+});
+
+test("legacy adapter stays server-only and unwired from application clients", () => {
+  const adapterSource = readFileSync("lib/v2/legacy-alert-adapter.ts", "utf8");
+  assert.doesNotMatch(adapterSource, /["']use client["']/);
+  assert.doesNotMatch(adapterSource, /from\s+["']firebase/);
+  assert.doesNotMatch(adapterSource, /addDoc|setDoc|updateDoc|deleteDoc|collection\s*\(/);
+
+  for (const path of sourceFiles("app")) {
+    assert.doesNotMatch(readFileSync(path, "utf8"), /legacy-alert-adapter/, path);
+  }
 });

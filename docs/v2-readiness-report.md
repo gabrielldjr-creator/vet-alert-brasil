@@ -28,7 +28,7 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 | SAPSA/RBAC | PASS no código | Papéis `sapsa_analyst`/`admin`, dados agregados e coleções raw client-denied. Claims/IAM reais ainda precisam de teste em ambiente controlado. |
 | Small-cell/export | PASS | Células menores que 5 não são exportadas; CSV não contém IDs, município individual, timestamp exato, UID ou digest. |
 | MAPA | PASS no V2 | Orientação neutra; sem integração/envio oficial automático e sem alegação de endosso. Legado permanece inalterado. |
-| Build/typecheck/testes V2 | PASS | Build, TypeScript, lint do novo código e 19 testes passam. |
+| Build/typecheck/testes V2 | PASS | Build, TypeScript, lint do novo código e 20 testes passam. |
 | Lint total | FAIL preexistente | Oito erros e três avisos permanecem no `AlertFormClient.tsx` protegido; não foram introduzidos nem corrigidos nesta fase. |
 | Browser | PASS no emulador | 5 cenários Chromium cobrem V2, veterinário legado, agro legado, rotas, mobile, teclado, falha, refresh, back e clique duplo. |
 | Firebase E2E/regras dinâmicas | PASS no emulador | Auth/Firestore demo, 7 grupos: papéis, rules, schema, HMAC, integridade, agregação e export. |
@@ -36,7 +36,7 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 ## Verificações executadas
 
 - `tsc --noEmit`: PASS.
-- suíte Node/TypeScript: 19/19 PASS.
+- suíte Node/TypeScript: 20/20 PASS.
 - ESLint de `app/v2`, `app/sapsa`, `app/api`, `lib/v2`, `tests`: PASS.
 - Next.js production build: PASS; todas as rotas legadas e V2 compiladas.
 - Python `compileall backend`: PASS.

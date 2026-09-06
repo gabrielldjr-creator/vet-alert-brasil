@@ -27,6 +27,17 @@ O módulo não está importado por Client Component nem exposto por API. Uma int
 
 Há uma limitação importante: as regras legadas atuais permitem leitura autenticada de `alerts`, pois dashboards de produção dependem disso. A autorização desta fase proíbe alterar permissões. Portanto, o adaptador proposto não cria nova leitura direta, mas também não pode eliminar a leitura direta histórica. Fechar esse caminho exige aprovação futura de mudanças em dashboard/permissões e deve ocorrer antes de alegar que nenhum cliente do sistema consegue ler raw legado.
 
+Por isso, “privacy-safe” descreve somente a arquitetura V2 testada, não o produto completo enquanto `alerts` legado possuir leitura autenticada.
+
+## Segunda revisão de invariantes
+
+- O módulo é função pura e não contém import de Firebase, API route ou Client Component.
+- A saída é construída campo a campo por allowlist fechada; não há spread do documento raw.
+- Não há campo de documento, UID, timestamp exato, texto livre, identidade, município textual, produto, marca, prescrição ou `context`.
+- A granularidade temporal é somente semana ISO; contagens viram faixas.
+- O módulo não executa leitura cliente, escrita, update, delete ou backfill.
+- A proposta continua sem integração: qualquer conexão futura exige repositório Admin SDK server-only, agregação e small-cell suppression antes da resposta.
+
 ## Sequência futura, não autorizada
 
 1. Criar repositório Admin SDK exclusivo de servidor.

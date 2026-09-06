@@ -19,18 +19,19 @@ Escopo: emulador e previews; sem cutover, sem mudança de produção e sem dados
 | Raw V2 inacessível ao cliente | PASS | Não autenticado, veterinário, analista e admin falham em get/create nas três coleções V2. |
 | Small-cell e CSV | PASS | Célula com 2 registros é suprimida; CSV não contém IDs/timestamps/município/UID/digests; export cria audit log HMAC. |
 | Mobile/teclado/navegação/falha/reenvio | PASS | Chromium 390×844, ativação por Enter, sem overflow, voltar preserva dados, falha não envia, refresh reinicia seguro e clique duplo produz uma requisição. |
-| Firestore rules | PASS | Blocos legados permanecem iguais; V2 usa negações explícitas por operação; não existe `allow read, write`; testes dinâmicos confirmam. |
-| Vercel preview flag off/on | FAIL de verificação externa | Deployments foram criados em ordem, mas leitura/logs/URL protegida retornam 403 por falta de autorização da credencial ao scope. |
+| Firestore rules | PASS no branch | Blocos legados permanecem iguais ao baseline `0290778`; o branch acrescenta negações V2 explícitas. Testes dinâmicos confirmam. |
+| Vercel preview flag off/on | BLOCKED / NÃO VERIFICADO | A lista de times do conector veio vazia e ambos os URLs protegidos retornaram 403. |
 
 ## Testes executados
 
-- `npm test`: 19/19 PASS, incluindo três testes dedicados ao adaptador legado por allowlist.
+- `npm test`: 20/20 PASS, incluindo quatro testes dedicados ao adaptador legado por allowlist e isolamento arquitetural.
 - `npm run test:emulator`: 7/7 PASS.
 - `npm run test:e2e`: 5/5 PASS em Chromium + Firebase Auth/Firestore Emulator.
 - `npm run typecheck`: PASS.
 - `npm run build`: PASS; 17 páginas/rotas geradas, incluindo todos os intakes legados e V2.
 - ESLint dos arquivos novos/alterados: PASS.
 - `npm run lint`: permanece FAIL somente no `app/alerta/novo/AlertFormClient.tsx` protegido (8 erros e 3 warnings preexistentes: 5 `no-explicit-any`, 3 `set-state-in-effect` e 3 variáveis não usadas); não foi alterado.
+- Reprodução em checkout separado: Node 24.19.0 + Temurin 21.0.12.1, `npm ci`, 20/20, 7/7 e 5/5 PASS. O runner usa build/start; uma execução interrompida por suspensão prolongada do host foi descartada e a repetição contínua passou. Comandos completos em `docs/emulator-validation.md`.
 
 ## Matriz de papéis
 
@@ -43,9 +44,16 @@ Escopo: emulador e previews; sem cutover, sem mudança de produção e sem dados
 
 O Admin SDK do servidor ignora rules por desenho; por isso IAM, credenciais e logs do ambiente real continuam sendo controles operacionais obrigatórios.
 
-## Prova das regras
+## Prova e histórico das regras
 
-O diff acrescenta somente três blocos server-only. Os blocos históricos `alerts`, `signals`, `profiles`, `veterinarian_alerts` e `users/{uid}/patients` não foram ampliados. Para cada coleção V2, `get`, `list`, `create`, `update` e `delete` são explicitamente `false`. Não há wildcard permissivo e não há expressão ampla `allow read, write`.
+“Arquivo inalterado” no relatório anterior significava inalterado durante o último follow-up, não idêntico à produção. A comparação correta é:
+
+- baseline de produção: commit `0290778`, blob `b5fbc76e9ea01fafc3e499ee401234e8a8cfaa36`;
+- introdução das três coleções V2 deny-only: commit `6426b12`, 10 linhas aditivas;
+- explicitação das operações `get, list, create, update, delete: if false`: commit `8b6cec8`;
+- arquivo atual: blob `a3896d7090400990d5131b67b283b85c4a2e9bc6`, sem mudança posterior.
+
+O diff `0290778..HEAD` acrescenta somente os blocos `veterinaryObservationsV2`, `submissionIntegrityV2` e `auditLogsV2`. Os três blocos legados realmente presentes no baseline — `alerts`, `vetProfiles` e `doctors` — permanecem byte a byte iguais. Para cada coleção V2, `get`, `list`, `create`, `update` e `delete` são explicitamente `false`. Não há wildcard permissivo nem regra ampla `allow read, write`.
 
 Além da inspeção textual, o emulador executou tentativas de get/create para os quatro contextos de autenticação e confirmou negação. No legado, confirmou create/read autenticado, negação sem auth e negação de update/delete.
 
@@ -55,6 +63,14 @@ Além da inspeção textual, o emulador executou tentativas de get/create para o
 2. Flag on, preview only: deployment `dpl_5quw7BotdoTdSpBSoLMSywSxY6pZ`, URL `https://vetalert-v2-validation-3uzttc2e3-colo-prep-ia.vercel.app`.
 
 Ambos foram enviados como target `preview`, com variável aplicada no artefato daquele deployment. Nenhum domínio foi promovido, nenhum alias de produção foi alterado e nenhuma submissão foi tentada. A ferramenta de deploy confirmou criação, porém a ferramenta de leitura, logs e bypass informou 403: a conexão atual não está autorizada ao time `team_WhTnfhZtuaTOA5leKK3KLqqm` / scope `colo-prep-ia`. Portanto, não se declara build/rota PASS em Vercel até reautenticar o conector nesse scope e verificar: off → 404; on → 200; rotas legadas → 200; logs sem erro.
+
+Nova tentativa em 5 de setembro de 2026: `list_teams` retornou lista vazia e `web_fetch` retornou “Failed to check deployment: 403 Forbidden” para os dois URLs. O conector não oferece ao agente um mecanismo para concluir o consentimento OAuth do usuário. Rotas, onboarding, layout móvel, erros e SAPSA nos previews permanecem **não verificados**.
+
+## Escopo correto das alegações de privacidade
+
+- **V2:** schema estrito, coleções client-denied, processamento server-side e saídas SAPSA agregadas passaram nos testes locais/emulador. A alegação é limitada a esse fluxo e ainda depende de IAM/logs/segredos em staging real.
+- **Legado existente:** `alerts` continua legível por qualquer usuário autenticado, conforme o contrato histórico. Logo, o produto inteiro não deve ser descrito como privacy-safe.
+- **Migração futura:** dashboards deverão consumir somente agregados server-side antes de uma mudança de permissões separadamente aprovada. Não há migração, backfill, exclusão ou alteração de rules legadas nesta fase.
 
 ## Rollback
 

@@ -11,15 +11,19 @@ const serverEnvironment = {
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-vetalert-v2",
 };
 
-const server = spawn(process.execPath, ["./node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", "3100"], {
+let server;
+
+const spawnNext = (command) => spawn(process.execPath, ["./node_modules/next/dist/bin/next", command, ...(command === "start" ? ["--hostname", "127.0.0.1", "--port", "3100"] : [])], {
   env: serverEnvironment,
   stdio: "inherit",
 });
 
+const waitForExit = (child) => new Promise((resolve) => child.once("exit", (code) => resolve(code ?? 1)));
+
 const waitForServer = async () => {
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) throw new Error(`Next.js exited with ${server.exitCode}`);
+    if (!server || server.exitCode !== null) throw new Error(`Next.js exited with ${server?.exitCode ?? "no process"}`);
     try {
       const response = await fetch("http://127.0.0.1:3100/v2/onboarding");
       if (response.ok) return;
@@ -31,20 +35,24 @@ const waitForServer = async () => {
 
 const run = async () => {
   try {
+    const build = spawnNext("build");
+    const buildExitCode = await waitForExit(build);
+    if (buildExitCode !== 0) throw new Error(`Next.js build exited with ${buildExitCode}`);
+    server = spawnNext("start");
     await waitForServer();
     const playwright = spawn(process.execPath, ["./node_modules/@playwright/test/cli.js", "test"], {
       env: serverEnvironment,
       stdio: "inherit",
     });
-    const exitCode = await new Promise((resolve) => playwright.once("exit", (code) => resolve(code ?? 1)));
+    const exitCode = await waitForExit(playwright);
     process.exitCode = exitCode;
   } finally {
-    server.kill("SIGTERM");
+    server?.kill("SIGTERM");
   }
 };
 
 run().catch((error) => {
   console.error(error);
   process.exitCode = 1;
-  server.kill("SIGTERM");
+  server?.kill("SIGTERM");
 });
