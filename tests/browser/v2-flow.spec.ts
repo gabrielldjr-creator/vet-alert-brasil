@@ -1,5 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const contextualPatterns = [
+  "manifestacao_respiratoria_observada",
+  "alteracao_neurologica_observada",
+  "alteracao_reprodutiva_observada",
+] as const;
+
+const officialGuidanceParagraphs = [
+  "O VetAlert é um registro observacional independente. O conteúdo enviado não é encaminhado automaticamente ao MAPA, ao e-SISBRAVET ou a qualquer outro sistema ou instituição.",
+  "O formulário não solicita nome do veterinário, CRMV, nome do produtor, propriedade, fabricante, marca ou coordenada individual. Por isso, o VetAlert não é um canal de notificação oficial.",
+  "Se, considerando o contexto clínico, houver suspeita de doença ou síndrome de notificação obrigatória, o profissional deve comunicar imediatamente o Serviço Veterinário Oficial ou o e-SISBRAVET. O registro no VetAlert nunca substitui essa obrigação.",
+] as const;
+
 async function mockTerritories(page: Page) {
   await page.route("**/api/v2/territories?*", (route) => route.fulfill({
     status: 200,
@@ -17,11 +29,20 @@ async function reachObservationForm(page: Page) {
   await page.getByLabel("Espécie ou grupo de produção").selectOption("bovinos");
   await page.getByRole("button", { name: "Continuar para o registro" }).click();
   await expect(page.getByText("Etapa 1 de 3")).toBeVisible();
+  await expect(page.getByText("Etapa 1 de 3").locator("..")).toBeFocused();
+}
+
+async function selectContextualPattern(page: Page, value: typeof contextualPatterns[number]) {
+  await page.getByLabel("Manifestação observada").selectOption(value);
+  const dialog = page.getByRole("dialog", { name: "Como este registro funciona" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Entendi — continuar registro observacional" }).click();
+  await expect(dialog).toBeHidden();
 }
 
 async function reachReview(page: Page) {
   await reachObservationForm(page);
-  await page.getByLabel("Manifestação observada").selectOption("manifestacao_respiratoria_observada");
+  await selectContextualPattern(page, "manifestacao_respiratoria_observada");
   await page.getByLabel("Faixa de animais envolvidos").selectOption("2_5");
   await page.getByLabel("Nível de atenção percebido").selectOption("observed");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
@@ -32,14 +53,49 @@ async function reachReview(page: Page) {
   await expect(page.getByText("Etapa 3 de 3")).toBeVisible();
 }
 
+test("contextual modal covers configured categories while the official link remains optional", async ({ page }) => {
+  let officialChannelRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().startsWith("https://sistemasweb.agricultura.gov.br/")) officialChannelRequests += 1;
+  });
+  await reachObservationForm(page);
+  await page.getByLabel("Faixa de animais envolvidos").selectOption("2_5");
+  await page.getByLabel("Nível de atenção percebido").selectOption("observed");
+
+  for (const pattern of contextualPatterns) {
+    await page.getByLabel("Manifestação observada").selectOption(pattern);
+    const dialog = page.getByRole("dialog", { name: "Como este registro funciona" });
+    await expect(dialog).toBeVisible();
+    for (const paragraph of officialGuidanceParagraphs) await expect(dialog.getByText(paragraph, { exact: true })).toBeVisible();
+    const officialLink = dialog.getByRole("link", { name: "Abrir canal oficial" });
+    await expect(officialLink).toHaveAttribute("href", "https://sistemasweb.agricultura.gov.br/pages/SISBRAVET.html");
+    await expect(officialLink).toHaveAttribute("target", "_blank");
+    await expect(officialLink).toHaveAttribute("rel", /noopener/);
+    await expect(page.getByRole("button", { name: "Continuar", exact: true })).toBeDisabled();
+    const acknowledge = dialog.getByRole("button", { name: "Entendi — continuar registro observacional" });
+    await expect(acknowledge).toBeFocused();
+    await acknowledge.click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByLabel("Manifestação observada")).toBeFocused();
+    await expect(page.getByRole("button", { name: "Continuar", exact: true })).toBeEnabled();
+    expect(officialChannelRequests).toBe(0);
+  }
+
+  await page.getByLabel("Manifestação observada").selectOption("manifestacao_digestiva_observada");
+  await expect(page.getByRole("dialog", { name: "Como este registro funciona" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Continuar", exact: true })).toBeEnabled();
+});
+
 test("mobile onboarding, keyboard activation, in-app back navigation and valid single submission", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockTerritories(page);
   await page.goto("/v2/onboarding");
+  await expect(page.getByText("Inteligência de campo independente e agregada para decisões operacionais.", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Como funciona" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByText(/recebe uma observação estruturada/)).toBeVisible();
+  await expect(page.getByText("Os resultados agregados podem apoiar decisões operacionais de seguradoras, empresas de saúde animal, distribuidores, bancos e produtores. Não constituem diagnóstico, notificação oficial ou sistema oficial de alerta.", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await page.getByRole("button", { name: "Começar" }).click();
@@ -47,7 +103,7 @@ test("mobile onboarding, keyboard activation, in-app back navigation and valid s
   await page.getByLabel("Território de atuação (UF)").selectOption("SC");
   await page.getByLabel("Espécie ou grupo de produção").selectOption("bovinos");
   await page.getByRole("button", { name: "Continuar para o registro" }).click();
-  await page.getByLabel("Manifestação observada").selectOption("manifestacao_respiratoria_observada");
+  await selectContextualPattern(page, "manifestacao_respiratoria_observada");
   await page.getByLabel("Faixa de animais envolvidos").selectOption("2_5");
   await page.getByLabel("Nível de atenção percebido").selectOption("observed");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
@@ -58,21 +114,66 @@ test("mobile onboarding, keyboard activation, in-app back navigation and valid s
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
 
   let submissions = 0;
-  page.on("request", (request) => { if (request.method() === "POST" && request.url().endsWith("/api/v2/observations")) submissions += 1; });
+  let submittedPayload: Record<string, unknown> | undefined;
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/api/v2/observations")) {
+      submissions += 1;
+      submittedPayload = request.postDataJSON() as Record<string, unknown>;
+    }
+  });
   const submit = page.getByRole("button", { name: "Enviar observação" });
   await submit.dblclick({ delay: 20 });
   await expect(page).toHaveURL(/\/v2\/confirmacao$/, { timeout: 15_000 });
   expect(submissions).toBe(1);
+  expect(submittedPayload).toEqual({
+    territory: { stateCode: "SC" },
+    species: "bovinos",
+    signalGroup: "respiratorio",
+    observedPattern: "manifestacao_respiratoria_observada",
+    animalCountBand: "2_5",
+    attentionLevel: "observed",
+    observationPeriod: "ultimos_7d",
+    consentVersion: "vetalert-v2-2026-09-05",
+  });
+  for (const prohibitedMetadata of ["disease", "suspectedDisease", "suspicion", "officialNotification", "officialGuidanceAcknowledged"]) {
+    expect(submittedPayload).not.toHaveProperty(prohibitedMetadata);
+  }
 });
 
 test("network failure keeps the observation unsent and refresh returns safely to onboarding", async ({ page }) => {
   await reachReview(page);
   await page.route("**/api/v2/observations", (route) => route.abort("failed"));
   await page.getByRole("button", { name: "Enviar observação" }).click();
-  await expect(page.getByText(/Seus dados não foram enviados/)).toBeVisible();
+  const submissionError = page.getByText(/Seus dados não foram enviados/);
+  await expect(submissionError).toBeVisible();
+  await expect(submissionError).toBeFocused();
   await expect(page).toHaveURL(/\/v2\/onboarding$/);
   await page.reload();
   await expect(page.getByRole("button", { name: "Começar" })).toBeVisible();
+});
+
+test("territory lookup failure is announced and municipality remains optional", async ({ page }) => {
+  await page.route("**/api/v2/territories?*", (route) => route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ error: "territory_lookup_failed" }) }));
+  await page.goto("/v2/onboarding");
+  await page.getByRole("button", { name: "Começar" }).click();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByLabel("Território de atuação (UF)").selectOption("SC");
+  await page.getByLabel("Espécie ou grupo de produção").selectOption("bovinos");
+  await page.getByRole("button", { name: "Continuar para o registro" }).click();
+  await selectContextualPattern(page, "manifestacao_respiratoria_observada");
+  await page.getByLabel("Faixa de animais envolvidos").selectOption("2_5");
+  await page.getByLabel("Nível de atenção percebido").selectOption("observed");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("município continua opcional");
+  await expect(page.getByLabel("Município (opcional)")).toHaveValue("");
+  await page.getByLabel("Período da observação").selectOption("ultimos_7d");
+  await expect(page.getByRole("button", { name: "Continuar", exact: true })).toBeEnabled();
+});
+
+test("SAPSA UI denies an unauthenticated browser and exposes no raw record fields", async ({ page }) => {
+  await page.goto("/sapsa/v2");
+  await expect(page.getByRole("heading", { name: "Acesso não autorizado" })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(/submissionId|originDigest|fingerprint|municipalityCode|receivedAt/);
 });
 
 test("legacy and agro registration routes remain available while V2 is isolated", async ({ page }) => {

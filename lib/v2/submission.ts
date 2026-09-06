@@ -19,20 +19,19 @@ export async function persistObservationV2(input: VeterinaryObservationV2Input, 
 
   return db.runTransaction(async (transaction) => {
     const integrity = db.collection("submissionIntegrityV2");
+    const rateCutoff = Timestamp.fromMillis(now.getTime() - policy.rateWindowMinutes * 60000);
+    const duplicateCutoff = Timestamp.fromMillis(now.getTime() - policy.duplicateWindowHours * 3600000);
     const [originSnapshot, duplicateSnapshot] = await Promise.all([
-      transaction.get(integrity.where("originDigest", "==", originDigest).limit(100)),
-      transaction.get(integrity.where("fingerprint", "==", fingerprint).limit(100)),
+      transaction.get(integrity.where("originDigest", "==", originDigest).where("receivedAt", ">=", rateCutoff).limit(policy.maxSubmissionsPerWindow)),
+      transaction.get(integrity.where("fingerprint", "==", fingerprint).where("receivedAt", ">=", duplicateCutoff).limit(1)),
     ]);
-    const rateCutoff = now.getTime() - policy.rateWindowMinutes * 60000;
-    const duplicateCutoff = now.getTime() - policy.duplicateWindowHours * 3600000;
-    const recentFromOrigin = originSnapshot.docs.filter((doc) => doc.get("receivedAt")?.toMillis?.() >= rateCutoff).length;
-    const duplicateSuspected = duplicateSnapshot.docs.some((doc) => doc.get("receivedAt")?.toMillis?.() >= duplicateCutoff);
-    const rateLimitExceeded = recentFromOrigin >= policy.maxSubmissionsPerWindow;
+    const duplicateSuspected = !duplicateSnapshot.empty;
+    const rateLimitExceeded = originSnapshot.size >= policy.maxSubmissionsPerWindow;
     const observation = buildObservationDocument(input, { submissionId, receivedAt, expiresAt: observationExpiresAt, duplicateSuspected, rateLimitExceeded });
 
     transaction.create(db.collection("veterinaryObservationsV2").doc(submissionId), observation);
-    transaction.create(integrity.doc(submissionId), { submissionId, originDigest, fingerprint, receivedAt, expiresAt: integrityExpiresAt, duplicateSuspected, rateLimitExceeded, policyVersion: "integrity-v2-1" });
-    transaction.create(db.collection("auditLogsV2").doc(), { event: "observation.accepted", submissionId, actorDigest: originDigest, occurredAt: receivedAt, expiresAt: integrityExpiresAt, schemaVersion: 2, outcome: duplicateSuspected || rateLimitExceeded ? "accepted_for_review" : "accepted" });
+    transaction.create(integrity.doc(submissionId), { submissionId, originDigest, fingerprint, receivedAt, expiresAt: integrityExpiresAt, duplicateSuspected, rateLimitExceeded, policyVersion: "integrity-v2-2", integrityKeyVersion: policy.integrityKeyVersion });
+    transaction.create(db.collection("auditLogsV2").doc(), { event: "observation.accepted", submissionId, actorDigest: originDigest, occurredAt: receivedAt, expiresAt: integrityExpiresAt, schemaVersion: 2, integrityKeyVersion: policy.integrityKeyVersion, outcome: duplicateSuspected || rateLimitExceeded ? "accepted_for_review" : "accepted" });
     return { submissionId, accepted: true, reviewRequired: duplicateSuspected || rateLimitExceeded };
   });
 }

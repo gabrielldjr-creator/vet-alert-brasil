@@ -31,3 +31,14 @@ test("different syndromes do not converge", () => {
   const records = [record(1, "4205407"), { ...record(2, "4209102"), signalGroup: "digestivo" }, { ...record(3, "4205407"), signalGroup: "neurologico" }];
   assert.equal(buildSapsaSummary(records, thresholds).cells.length, 0);
 });
+
+test("explainability reports suspicious exclusions for each cell, not a global total", () => {
+  const records = [
+    record(1, "4205407"), record(2, "4209102"), record(3, "4205407"),
+    { ...record(4, "4205407", { duplicateSuspected: true }), signalGroup: "digestivo" },
+  ];
+  const summary = buildSapsaSummary(records, thresholds);
+  assert.equal(summary.cells[0].explanation.suspiciousRecordsExcluded, 0);
+  assert.equal(summary.suspiciousRecordsExcluded, 1);
+  assert.equal(summary.methodology.qualityPolicy, "exclude-duplicate-or-rate-flag-v1");
+});

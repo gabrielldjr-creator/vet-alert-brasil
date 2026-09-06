@@ -10,6 +10,7 @@ process.env.VETALERT_V2_ENABLED = "true";
 process.env.VETALERT_V2_INTEGRITY_SECRET = "emulator-only-secret-with-at-least-32-chars";
 process.env.VETALERT_V2_MAX_SUBMISSIONS = "2";
 process.env.VETALERT_V2_MINIMUM_CELL = "5";
+process.env.VETALERT_V2_INTEGRITY_KEY_VERSION = "emulator-key-2026-09";
 
 const projectId = "demo-vetalert-v2";
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
@@ -82,6 +83,11 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
       const response = await post(veterinarian.token, { ...valid("4205407"), ...prohibited });
       assert.equal(response.status, 400, JSON.stringify(prohibited));
     }
+    const malformed = await submitObservation(new Request("http://localhost/api/v2/observations", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${veterinarian.token}` }, body: "{" }));
+    assert.equal(malformed.status, 400);
+    assert.equal(malformed.headers.get("cache-control"), "private, no-store");
+    const wrongContentType = await submitObservation(new Request("http://localhost/api/v2/observations", { method: "POST", headers: { "Content-Type": "text/plain" }, body: "{}" }));
+    assert.equal(wrongContentType.status, 415);
   });
 
   await t.test("valid submission receives immutable server metadata; duplicates and rate bursts are preserved and flagged", async () => {
@@ -102,6 +108,8 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
     assert.match(integrity.originDigest, /^[a-f0-9]{64}$/);
     assert.notEqual(integrity.originDigest, veterinarian.uid);
     assert.match(integrity.fingerprint, /^[a-f0-9]{64}$/);
+    assert.equal(integrity.integrityKeyVersion, "emulator-key-2026-09");
+    assert.equal(integrity.policyVersion, "integrity-v2-2");
 
     const duplicate = await post(veterinarian.token, valid("4205407"));
     const duplicateResult = await duplicate.json() as { submissionId: string; reviewRequired: boolean };
@@ -151,10 +159,13 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
       assert.equal(response.status, 200);
       const text = await response.text();
       assert.doesNotMatch(text, /submissionId|originDigest|fingerprint|receivedAt|municipalityCode|legacy-contract-e2e/);
-      const summary = JSON.parse(text) as { cells: Array<{ species: string; observationCount: number }>; suppressedCellCount: number };
+      const summary = JSON.parse(text) as { cells: Array<{ species: string; observationCount: number; sourceChannelCount: number }>; suppressedCellCount: number; methodology: { version: string; scientificallyValidated: boolean } };
       assert.equal(summary.cells.some((cell) => cell.species === "bovinos" && cell.observationCount >= 5), true);
+      assert.equal(summary.cells.every((cell) => cell.sourceChannelCount >= 1), true);
       assert.equal(summary.cells.some((cell) => cell.species === "equinos"), false);
       assert.ok(summary.suppressedCellCount >= 1);
+      assert.equal(summary.methodology.version, "sapsa-v2-exploratory-2");
+      assert.equal(summary.methodology.scientificallyValidated, false);
     }
   });
 
@@ -174,6 +185,7 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
     assert.equal(exports.size, 2);
     for (const entry of exports.docs) {
       assert.match(entry.get("actorDigest"), /^[a-f0-9]{64}$/);
+      assert.equal(entry.get("integrityKeyVersion"), "emulator-key-2026-09");
       assert.equal(entry.get("rowCount") >= 1, true);
     }
   });

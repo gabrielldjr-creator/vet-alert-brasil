@@ -8,7 +8,7 @@ const valid = { territory: { stateCode: "SC", municipalityCode: "4205407" }, spe
 test("V2 accepts the canonical controlled input", () => assert.equal(validateObservationV2(valid).ok, true));
 
 test("V2 rejects identity, commercial, free-text and forged server fields recursively", () => {
-  for (const field of ["name", "crmv", "cpf", "email", "producer", "farm", "brand", "manufacturer", "productSold", "notes", "uid", "role", "submissionId", "receivedAt", "schemaVersion", "source", "integrity"]) {
+  for (const field of ["name", "veterinarianName", "crmv", "cpf", "email", "phone", "producer", "farm", "property", "company", "empresa", "brand", "manufacturer", "address", "gps", "latitude", "longitude", "coordinates", "ip", "userAgent", "device", "productSold", "notes", "freeText", "uid", "authUid", "role", "organization", "submissionId", "receivedAt", "schemaVersion", "source", "sourceChannel", "qualityFlags", "integrity", "expiresAt"]) {
     const result = validateObservationV2({ ...valid, therapeuticContext: { [field]: "forged" } });
     assert.equal(result.ok, false, field);
   }
