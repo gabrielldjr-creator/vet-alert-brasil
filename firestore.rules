@@ -15,5 +15,15 @@ service cloud.firestore {
       allow create, update: if request.auth != null && request.auth.uid == doctorUid;
       allow delete: if false;
     }
+    // V2 is server-only. These rules are additive and do not change legacy access.
+    match /veterinaryObservationsV2/{documentId} {
+      allow get, list, create, update, delete: if false;
+    }
+    match /submissionIntegrityV2/{documentId} {
+      allow get, list, create, update, delete: if false;
+    }
+    match /auditLogsV2/{documentId} {
+      allow get, list, create, update, delete: if false;
+    }
   }
 }
