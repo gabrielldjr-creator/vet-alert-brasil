@@ -25,7 +25,7 @@ cliente e Firebase Admin Auth/Firestore no servidor.
 | GHSA-h25m-26qc-wcjf | desserialização RSC/DoS | Potencialmente alcançável: App Router/RSC é superfície pública. |
 | GHSA-ggv3-7p47-pfv8 | request smuggling em rewrites | Não alcançado: sem rewrites. |
 | GHSA-3x4c-7xq6-9pq8 | cache de next/image | Não alcançado: sem next/image. |
-| GHSA-h27x-g6w4-24gq | postponed resume buffering | Alcance incerto; PPR não está habilitado, mas requer teste da versão corrigida. |
+| GHSA-h27x-g6w4-24gq | postponed resume buffering | Alcance incerto; PPR não está habilitado. |
 | GHSA-mq59-m269-xvcx | CSRF em Server Actions | Não alcançado: sem Server Actions. |
 | GHSA-jcc7-9wpm-mj36 | HMR dev | Desenvolvimento apenas; não é runtime de produção. |
 | GHSA-5f7q-jpqc-wp7h | PPR resume DoS | Não alcançado pela configuração atual: PPR ausente. |
@@ -34,15 +34,10 @@ cliente e Firebase Admin Auth/Firestore no servidor.
 | GHSA-26hh-7cqf-hhc6 | middleware/proxy bypass | Não alcançado: middleware/proxy ausente. |
 | GHSA-3g8h-86w9-wvmq | cache poisoning em redirect proxy | Não alcançado: proxy ausente. |
 | GHSA-ffhc-5mcf-pf4q | XSS com CSP nonce | Não alcançado: nonce/configuração ausente. |
-| GHSA-vfv6-lk? | cache-busting RSC | Identificador não retornou no audit atual; não usado como evidência. |
-| GHSA-vfv6-92ff-j949 | colisão cache-busting RSC | Potencialmente alcançável; App Router/RSC presente. |
-| GHSA-gx5p-jg/6x7h | identificador inválido | Não usado como evidência. |
+| GHSA-vfv6-92ff-j949 | colisão cache-busting RSC | Potencialmente alcançável: App Router/RSC presente. |
 | GHSA-gx5p-jg67-6x7h | beforeInteractive com input não confiável | Não alcançado: API ausente. |
 | GHSA-mg66-mrh9-m8jx | Cache Components connection exhaustion | Não alcançado pela configuração atual. |
 | GHSA-h64f-5h5j-jqjh | Image Optimization DoS | Não alcançado: sem next/image. |
-| GHSA-c4j6-fc7j? | identificador inválido | Não usado como evidência. |
-| GHSA-c4j6-fc7j-m34? | identificador inválido | Não usado como evidência. |
-| GHSA-clk? | — | Linhas inválidas são mantidas fora da decisão. |
 | GHSA-c4j6-fc7j-m34r | SSRF em WebSocket upgrades | Não alcançado: sem custom Next WebSocket upgrade/server. |
 | GHSA-492v-c6pp-mqqv | middleware dynamic parameter bypass | Não alcançado: middleware ausente. |
 | GHSA-wfc6-r584-vfw7 | cache poisoning RSC | Potencialmente alcançável; exige teste dirigido. |
@@ -58,23 +53,34 @@ cliente e Firebase Admin Auth/Firestore no servidor.
 | GHSA-q8wf-6r8g-63ch | Image API SVG DoS | Não alcançado: sem next/image. |
 | GHSA-955p-x3mx-jcvp | divulgação de Server Functions | Não alcançado: sem `use server`. |
 
-As linhas marcadas “potencial” bastam para recomendar atualização dirigida.
-O audit atual indica `next@16.3.4` como correção sem major, mas isso não
-autoriza atualização automática.
+Os itens marcados “potencial” bastam para recomendar atualização dirigida. O
+audit atual indica `next@16.3.4` como correção sem major, mas isso não autoriza
+atualização automática.
 
 ## Firebase e transitivos: achados individuais
 
 | Pacote/advisory | Caminho | Avaliação VetAlert |
 |---|---|---|
-| websocket-driver GHSA-mp7j-qc5w-4988 | firebase → database → faye-websocket | Pacote crítico no grafo, mas `firebase/database` não é importado e websocket-driver/faye-websocket não aparecem nos artefatos de produção pesquisados. Não comprovadamente alcançável. |
+| websocket-driver GHSA-mp7j-qc5w-4988 | firebase → database → faye-websocket | Critical/high no grafo, mas `firebase/database` não é importado. `websocket-driver` e `faye-websocket` tiveram zero ocorrência nos artefatos de produção pesquisados. Não comprovadamente alcançável. |
 | websocket-driver GHSA-xv26-6w52-cph6 | mesmo caminho | Mesma avaliação; atualizar Firebase de forma dirigida continua recomendado. |
 | @grpc/grpc-js GHSA-5375-pq7m-f5r2 | firebase → firestore, versão 1.9.15 | Package tracing inclui gRPC, mas não existe servidor gRPC exposto pelo app. Entrada malformada teria de vir do endpoint remoto usado pelo SDK, não do usuário HTTP do VetAlert. Baixa alcançabilidade direta. |
 | @grpc/grpc-js GHSA-99f4-grh7-6pcq | mesmo caminho | Mesma avaliação. Firebase Admin/Firestore usa gRPC 1.14.4, fora do range. |
-| @google-cloud/storage/retry-request/teeny-request | firebase-admin | O app importa somente Admin app/auth/firestore e não chama Storage. Não há fluxo de URL/redirect Storage controlado pelo usuário. |
+| @google-cloud/storage/retry-request/teeny-request | firebase-admin | O app importa somente Admin app/auth/firestore e não chama Storage. Não há fluxo Storage controlado pelo usuário. |
 | uuid GHSA-w5hq-g745-h8pq | Admin transitivos | VetAlert não chama UUID v3/v5/v6 com buffer fornecido; pré-condição ausente. |
-| postcss advisories | Next transitivo | Build-time; CSS e source maps são do repositório, sem upload CSS público. |
-| nanoid advisories | PostCSS transitivo | Sem import direto ou tamanho fornecido por usuário. |
+| postcss GHSA-qx2v-qp2m-jg93 | Next transitivo | Build-time; CSS é do repositório e não é enviado por usuário. |
+| postcss GHSA-6g55-p6wh-862q | Next transitivo | Sem sourceMappingURL CSS controlado por atacante. |
+| postcss GHSA-fxqj-rqcc-2cmp | Next transitivo | Mesma ausência de fonte CSS não confiável. |
+| postcss GHSA-r28c-9q8g-f849 | Next transitivo | Mesma ausência de fonte CSS não confiável. |
+| nanoid GHSA-28wg-ghj8-5hjv | PostCSS transitivo | Sem import direto ou tamanho fornecido por usuário. |
+| nanoid GHSA-2v37-7h3g-55p8 | PostCSS transitivo | Sem custom generator no app. |
+| nanoid GHSA-xwg4-73v4-xw9w | PostCSS transitivo | Sem chamada direta. |
 | sharp GHSA-f88m-g3jw-g9cj | Next transitivo | Sem next/image ou processamento de imagem do usuário. |
+
+A busca no build encontrou identificadores de `@firebase/database` e gRPC em
+chunks/traces, embora não haja import de Database no código. Portanto, a revisão
+não afirma tree-shaking total; afirma somente que o código vulnerável
+`websocket-driver`/faye não apareceu na busca. Essa conclusão deve ser
+repetida após qualquer atualização.
 
 ## Decisão e plano de compatibilidade
 
