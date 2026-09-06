@@ -10,7 +10,7 @@ Escopo: emulador e previews; sem cutover, sem mudança de produção e sem dados
 |---|---|---|
 | Flag desativada por padrão | PASS | Teste unitário exige valor literal `true`; nenhuma variável/settings de produção foi alterada. |
 | Registro legado `/alerta/novo` | PASS no emulador | Browser fez auth anônima, percorreu o formulário, gravou em `alerts`, redirecionou ao dashboard e conferiu os campos persistidos. |
-| `/agro-signals/new` disponível | PASS | Rota carregada em browser; contrato também protegido por hash/regressão estática. Submissão agro completa ainda não tem cenário Playwright dedicado. |
+| `/agro-signals/new` | PASS no emulador | Browser fez auth anônima, submeteu o formulário e confirmou o payload legado completo em `alerts`, inclusive objeto `retailSignal`. |
 | V2 válido e metadados server-side | PASS | API + browser no emulador; `submissionId`, `receivedAt`, schema/source/status são gerados no servidor. |
 | Payload inválido/proibido/forjado | PASS | Payload incompleto e campos de nome, CRMV, produto, texto livre e `submissionId` cliente retornam 400. |
 | Duplicata e rate burst | PASS | Registros permanecem armazenados e recebem flags separadas; não há exclusão automática. |
@@ -24,13 +24,13 @@ Escopo: emulador e previews; sem cutover, sem mudança de produção e sem dados
 
 ## Testes executados
 
-- `npm test`: 16/16 PASS.
+- `npm test`: 19/19 PASS, incluindo três testes dedicados ao adaptador legado por allowlist.
 - `npm run test:emulator`: 7/7 PASS.
-- `npm run test:e2e`: 4/4 PASS em Chromium + Firebase Auth/Firestore Emulator.
+- `npm run test:e2e`: 5/5 PASS em Chromium + Firebase Auth/Firestore Emulator.
 - `npm run typecheck`: PASS.
 - `npm run build`: PASS; 17 páginas/rotas geradas, incluindo todos os intakes legados e V2.
 - ESLint dos arquivos novos/alterados: PASS.
-- `npm run lint`: permanece FAIL somente no `app/alerta/novo/AlertFormClient.tsx` protegido (5 erros `no-explicit-any`, 3 warnings preexistentes); não foi alterado.
+- `npm run lint`: permanece FAIL somente no `app/alerta/novo/AlertFormClient.tsx` protegido (8 erros e 3 warnings preexistentes: 5 `no-explicit-any`, 3 `set-state-in-effect` e 3 variáveis não usadas); não foi alterado.
 
 ## Matriz de papéis
 
@@ -67,10 +67,10 @@ Ambos foram enviados como target `preview`, com variável aplicada no artefato d
 
 ## Riscos e pendências
 
-- Reautorizar Vercel no scope correto e concluir a verificação dos dois previews.
-- Adicionar submissão browser completa dedicada para `/agro-signals/new`; hoje há disponibilidade em browser e proteção estática do contrato.
+- Reautorizar o conector Vercel no scope `colo-prep-ia` e concluir a verificação dos dois previews; as tentativas desta fase continuaram retornando 403.
 - Validar IAM/service account, rotação do HMAC, custom claims, TTL e redaction de logs em staging não produtivo real.
-- Revisar o `npm audit`: 77 vulnerabilidades no grafo completo (1 low, 42 moderate, 33 high, 1 critical) e 21 quando executado com `--omit=dev` (12 moderate, 8 high, 1 critical). Não executar upgrades automáticos no intake protegido; separar triagem por dependência alcançável e compatibilidade.
+- Tratar a triagem atual de dependências em `docs/dependency-security-triage.md`: 27 achados completos e 12 no grafo sem dev, sem bulk upgrade nesta fase.
+- Integrar o adaptador legado somente após aprovação própria. A revisão em `docs/legacy-alerts-adapter-review.md` registra que ele não expõe raw, mas as permissões históricas ainda permitem leitura autenticada de `alerts` para dashboards existentes.
 - Revisão jurídica/regulatória dos textos, retenção, base legal e precisão territorial continua externa ao teste técnico.
 
 ## Gate de decisão

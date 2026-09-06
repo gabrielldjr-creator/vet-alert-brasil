@@ -28,22 +28,22 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 | SAPSA/RBAC | PASS no código | Papéis `sapsa_analyst`/`admin`, dados agregados e coleções raw client-denied. Claims/IAM reais ainda precisam de teste em ambiente controlado. |
 | Small-cell/export | PASS | Células menores que 5 não são exportadas; CSV não contém IDs, município individual, timestamp exato, UID ou digest. |
 | MAPA | PASS no V2 | Orientação neutra; sem integração/envio oficial automático e sem alegação de endosso. Legado permanece inalterado. |
-| Build/typecheck/testes V2 | PASS | Build, TypeScript, lint do novo código e 16 testes passam. |
-| Lint total | FAIL preexistente | Cinco erros e três avisos permanecem no `AlertFormClient.tsx` protegido; não foram introduzidos nem corrigidos nesta fase. |
-| Browser | PASS no emulador | 4 cenários Chromium cobrem V2, legado, rotas, mobile, teclado, falha, refresh, back e clique duplo. |
+| Build/typecheck/testes V2 | PASS | Build, TypeScript, lint do novo código e 19 testes passam. |
+| Lint total | FAIL preexistente | Oito erros e três avisos permanecem no `AlertFormClient.tsx` protegido; não foram introduzidos nem corrigidos nesta fase. |
+| Browser | PASS no emulador | 5 cenários Chromium cobrem V2, veterinário legado, agro legado, rotas, mobile, teclado, falha, refresh, back e clique duplo. |
 | Firebase E2E/regras dinâmicas | PASS no emulador | Auth/Firestore demo, 7 grupos: papéis, rules, schema, HMAC, integridade, agregação e export. |
 
 ## Verificações executadas
 
 - `tsc --noEmit`: PASS.
-- suíte Node/TypeScript: 16/16 PASS.
+- suíte Node/TypeScript: 19/19 PASS.
 - ESLint de `app/v2`, `app/sapsa`, `app/api`, `lib/v2`, `tests`: PASS.
 - Next.js production build: PASS; todas as rotas legadas e V2 compiladas.
 - Python `compileall backend`: PASS.
-- Browser local: 4/4 PASS com Firebase Emulator.
+- Browser local: 5/5 PASS com Firebase Emulator.
 - Firebase Emulator: 7/7 PASS.
 - `git diff --check`: PASS.
-- Lint de source total: somente o delta preexistente de 5 erros/3 avisos no intake protegido.
+- Lint de source total: somente 8 erros/3 avisos preexistentes no intake protegido.
 
 ## Arquivos intencionalmente inalterados
 
@@ -70,7 +70,7 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 - Auditar retenção/redação de logs em Vercel, Firebase, proxies, suporte e backups.
 - Aprovar juridicamente textos, consentimento, base legal, atendimento a direitos e limites de precisão territorial.
 - Validar minimum cell 5 e thresholds exploratórios; não tratá-los como evidência científica.
-- Adicionar submissão browser dedicada do fluxo agro; o intake veterinário legado e o V2 já foram submetidos somente no emulador, sem observação sanitária em produção.
+- Reautorizar o Vercel no scope `colo-prep-ia`; ambos os previews continuam bloqueados para inspeção por 403.
 - Resolver vulnerabilidades reportadas no grafo npm em trabalho separado, com análise de compatibilidade.
 
 ## Decisão exata necessária para cutover

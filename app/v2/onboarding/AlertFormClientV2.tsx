@@ -41,7 +41,7 @@ export default function AlertFormClientV2() {
 
   useEffect(() => {
     let active = true;
-    if (!form.stateCode) { setMunicipalities([]); return; }
+    if (!form.stateCode) return;
     fetch(`/api/v2/territories?state=${encodeURIComponent(form.stateCode)}`)
       .then((response) => response.ok ? response.json() as Promise<MunicipalityOption[]> : [])
       .then((items) => { if (active) setMunicipalities(items); })

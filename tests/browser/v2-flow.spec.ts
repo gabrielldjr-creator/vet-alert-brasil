@@ -131,3 +131,51 @@ test("protected legacy veterinarian flow still authenticates anonymously and wri
   expect(fields).toHaveProperty("source.stringValue", "pilot");
   expect(fields).toHaveProperty("context.mapValue");
 });
+
+test("protected agro flow still authenticates anonymously and writes its exact legacy alerts contract", async ({ page, request }) => {
+  await page.route("**/servicodados.ibge.gov.br/api/v1/localidades/estados/SC/municipios?*", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify([{ id: 4205407, nome: "Florianópolis", microrregiao: { nome: "Florianópolis" }, mesorregiao: { nome: "Grande Florianópolis" } }]),
+  }));
+
+  await page.goto("/agro-signals/new");
+  await page.getByLabel("Espécie").selectOption("Bovinos");
+  await page.getByLabel("Sintoma reportado").selectOption("Sintoma respiratório");
+  await page.getByLabel("Descrição adicional do sintoma").fill("observação sintética de emulador");
+  await page.getByLabel("Produto vendido").fill("produto sintético de emulador");
+  await page.getByLabel("Categoria do produto").selectOption("Antibiótico");
+  await expect(page.getByLabel("Município")).toBeEnabled();
+  await page.getByLabel("Município").selectOption("4205407");
+  await page.getByLabel("Prescrição veterinária?").selectOption("Sim");
+  await page.getByLabel("Duração do problema").selectOption("ongoing");
+  await page.getByLabel("Quantidade de dias").fill("3");
+  await page.getByLabel("Observações").fill("nota sintética exclusiva do emulador");
+  await page.getByRole("button", { name: "Registrar Sinal de Campo" }).click();
+  await expect(page).toHaveURL(/\/global-alerts-dashboard$/, { timeout: 15_000 });
+
+  const response = await request.get("http://127.0.0.1:8080/v1/projects/demo-vetalert-v2/databases/(default)/documents/alerts", {
+    headers: { Authorization: "Bearer owner" },
+  });
+  expect(response.ok()).toBe(true);
+  const result = await response.json() as { documents?: Array<{ fields: Record<string, unknown> }> };
+  const agroFields = result.documents?.map((item) => item.fields).find((fields) =>
+    (fields.source as { stringValue?: string } | undefined)?.stringValue === "agro_retail"
+  );
+  expect(agroFields).toBeDefined();
+  expect(agroFields).toHaveProperty("signalType.stringValue", "field_retail");
+  expect(agroFields).toHaveProperty("state.stringValue", "SC");
+  expect(agroFields).toHaveProperty("cityCode.integerValue", "4205407");
+  expect(agroFields).toHaveProperty("city.stringValue", "Florianópolis");
+  expect(agroFields).toHaveProperty("species.stringValue", "Bovinos");
+  expect(agroFields).toHaveProperty("alertType.stringValue", "Sintoma respiratório");
+  expect(agroFields).toHaveProperty("severity.stringValue", "Não classificado");
+  expect(agroFields).toHaveProperty("alertGroup.stringValue", "Sinal de Campo");
+  expect(agroFields).toHaveProperty("cases.nullValue", null);
+  expect(agroFields).toHaveProperty("herdCount.stringValue", "Não informado");
+  expect(agroFields).toHaveProperty("context.mapValue.fields.retailSignal.mapValue.fields.productSold.stringValue", "produto sintético de emulador");
+  expect(agroFields).toHaveProperty("context.mapValue.fields.retailSignal.mapValue.fields.productCategory.stringValue", "Antibiótico");
+  expect(agroFields).toHaveProperty("context.mapValue.fields.retailSignal.mapValue.fields.veterinaryPrescription.stringValue", "Sim");
+  expect(agroFields).toHaveProperty("context.mapValue.fields.retailSignal.mapValue.fields.durationType.stringValue", "ongoing");
+  expect(agroFields).toHaveProperty("context.mapValue.fields.retailSignal.mapValue.fields.durationDays.integerValue", "3");
+});

@@ -214,6 +214,7 @@ Até uma resposta explícita e específica, nenhuma dessas ações será executa
 - Firebase Emulator Suite adicionada para Auth e Firestore no projeto demo `demo-vetalert-v2`; nenhum projeto ou dado de produção é utilizado.
 - Testes dinâmicos cobrem usuário não autenticado, veterinário, analista SAPSA e administrador, inclusive tentativas de acesso indevido.
 - O fluxo legado foi submetido de ponta a ponta no emulador e o documento em `alerts` foi conferido nos campos existentes.
+- O fluxo agro legado também foi submetido de ponta a ponta no emulador e seu payload aninhado foi conferido sem alteração do componente.
 - O V2 foi submetido em browser real ao emulador, incluindo falha de rede, refresh, retorno entre etapas, teclado, viewport móvel e clique duplo.
 - Dois deployments Vercel de preview foram solicitados em ordem, primeiro com flag false e depois true, usando configuração por deployment e sem alterar settings do projeto/produção. A verificação final ficou bloqueada porque a credencial de leitura do conector não tem acesso ao scope `colo-prep-ia`; detalhes em `docs/v2-validation-report.md`.
 
