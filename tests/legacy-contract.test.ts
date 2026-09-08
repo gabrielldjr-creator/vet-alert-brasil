@@ -29,7 +29,8 @@ test("legacy routes and payload contracts remain available", () => {
 test("V2 is a separate route and persistence contract", () => {
   for (const path of ["app/v2/onboarding/page.tsx", "app/v2/confirmacao/page.tsx", "app/v2/privacidade/page.tsx", "app/api/v2/observations/route.ts", "app/api/v2/territories/route.ts", "app/sapsa/v2/page.tsx", "app/api/v2/sapsa/summary/route.ts", "app/api/v2/sapsa/export/route.ts"]) assert.equal(existsSync(path), true, path);
   const v2Form = read("app/v2/onboarding/AlertFormClientV2.tsx");
-  assert.doesNotMatch(v2Form, /<textarea|ipapi|servicodados|geolocation|getCurrentPosition/i);
+  assert.doesNotMatch(v2Form, /ipapi|servicodados|geolocation|getCurrentPosition/i);
+  assert.match(v2Form, /TECHNICAL_NOTE_SCHEMA_VERSION/);
   assert.match(v2Form, /fetch\("\/api\/v2\/observations"/);
   const v2Layout = read("app/v2/layout.tsx");
   for (const legacyHref of ["/agro-signals/new", "/global-alerts-dashboard", "/terminal"]) assert.doesNotMatch(v2Layout, new RegExp(legacyHref.replace("/", "\\/")));

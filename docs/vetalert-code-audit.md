@@ -1,5 +1,7 @@
 # Auditoria técnica do VetAlert antes da reconstrução V2
 
+> Nota de atualização (7 de setembro de 2026): este documento preserva o baseline e o plano original “sem texto livre”. A implementação V2 posterior adiciona somente `technical-note-v1`, nota curta e fail-closed, e torna município obrigatório com catálogo IBGE estático. O desenho atual está em `docs/v2-technical-note-and-municipality.md`; nenhum texto legado é migrado.
+
 Data da auditoria: 5 de setembro de 2026  
 Commit auditado: `0290778` (`main`)  
 Escopo: todo o repositório `gabrielldjr-creator/vet-alert-brasil`
@@ -165,7 +167,7 @@ Garantia atual: a aplicação evita pedir nome/CRMV no formulário principal. Li
 | A02 | Segurança / permissões | `firestore.rules:4-7` | Qualquer autenticado lê e cria qualquer formato em `alerts` | Exfiltração e payload arbitrário | Novas coleções V2 deny-by-default; escrita somente Admin SDK | Testes estáticos/emulator | Planejado V2; permissão legada preservada |
 | A03 | Privacidade | `lib/auth.ts:13-68` | UID/email técnico persistente e UUID em localStorage | Correlação de dispositivo | Não reutilizar no documento observacional V2; pseudonimizar apenas no sidecar server-only | Ausência de UID/email no documento | Planejado V2 |
 | A04 | Privacidade | `AlertFormClient.tsx:337-355` | Geolocalização por IP automática | Terceiro recebe IP; território inferido | V2 exige seleção explícita e não chama geolocalização | Teste de ausência de `ipapi` | Planejado V2; legado congelado |
-| A05 | Privacidade | `AlertFormClient.tsx:543-603` | Texto livre, localidade e timestamp exato | Reidentificação | V2 sem texto livre e com saída agregada | Denylist e schema estrito | Planejado V2 |
+| A05 | Privacidade | `AlertFormClient.tsx:543-603` | Texto livre, localidade e timestamp exato | Reidentificação | V2 com nota técnica curta/fail-closed isolada da saída agregada | Denylist, dicionário e schema estrito | Implementado depois do baseline |
 | A06 | Privacidade / produto | `AgroSignalFormClient.tsx:24-120` | Produto vendido, descrição e notas livres entram em `alerts` | Empresa/produto/propriedade identificáveis | V2 não inclui canal varejo; rejeitar chaves proibidas no endpoint V2 | Testes recursivos | Planejado V2; legado congelado |
 | A07 | Privacidade | `ProfileSetupCard.tsx:40-61` | Grava email, UID, cidade, papel client-supplied | Identidade e escalada de papel | Não usar no V2; papéis somente em custom claims server-verified | Teste de claims | Planejado V2 |
 | A08 | Funcional / permissões | `ProfileSetupCard` e `DashboardVetPanel` versus `firestore.rules:9-12` | Código tenta gravar `vetProfiles`, mas regras bloqueiam | Fluxo inconsistente | Documentar legado; V2 não depende dessa escrita | Teste de contrato | Documentado |
@@ -203,11 +205,11 @@ Nenhuma rota existente será removida, renomeada ou redirecionada.
 
 | Namespace | Finalidade | Acesso do cliente |
 |---|---|---|
-| `veterinaryObservationsV2` | Observação canônica sem identidade, texto livre ou metadado técnico | Nenhum; Admin SDK somente |
+| `veterinaryObservationsV2` | Observação canônica sem identidade ou metadado técnico; nota opcional fail-closed permanece raw protegida | Nenhum; Admin SDK somente |
 | `submissionIntegrityV2` | Digest HMAC de origem, fingerprint, janela de taxa e flags | Nenhum |
 | `auditLogsV2` | Eventos operacionais mínimos, versionados e pseudonimizados | Nenhum |
 
-O documento observacional V2 não conterá UID, email, nome, CRMV, telefone, propriedade, coordenada, IP, User-Agent, marca, fabricante, produto ou texto livre. `receivedAt`, `submissionId`, `schemaVersion`, `source`, flags de qualidade e retenção serão gerados no servidor.
+O documento observacional V2 não contém UID, email, nome, CRMV, telefone, propriedade, coordenada, IP, User-Agent, marca, fabricante ou produto. A única entrada textual é `technical-note-v1`, curta e fail-closed, e não sai do registro protegido. `receivedAt`, `submissionId`, `schemaVersion`, `source`, flags de qualidade e retenção são gerados no servidor.
 
 ### Permissões propostas
 

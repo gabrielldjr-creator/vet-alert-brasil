@@ -88,7 +88,7 @@ Nenhum cutover faz parte desta implementação. Antes de substituir o legado, o 
 | `/v2/onboarding` | Nova, flag false por padrão | Pode virar candidata ao intake canônico |
 | `/v2/confirmacao` | Nova, sem ID público | Pode permanecer |
 | `/api/v2/observations` | Nova, auth + schema + server metadata | Pode permanecer |
-| `/api/v2/territories` | Nova, proxy server-side para a lista pública do IBGE | Pode permanecer; revisar disponibilidade/cache |
+| `/api/v2/territories` | Nova, leitura server-side de snapshot IBGE estático e versionado | Pode permanecer; revisar atualização do catálogo |
 | `/sapsa/v2` | Nova, dados somente com papel | Pode virar SAPSA canônico |
 | `/api/v2/sapsa/summary` | Nova, RBAC + agregação | Pode permanecer |
 | `/api/v2/sapsa/export` | Nova, RBAC + CSV agregado + auditoria | Pode permanecer após revisão de governança |
@@ -99,7 +99,7 @@ Nenhum cutover faz parte desta implementação. Antes de substituir o legado, o 
 type VeterinaryObservationV2 = {
   schemaVersion: 2;
   source: "veterinary";
-  territory: { stateCode: string; municipalityCode?: string };
+  territory: { stateCode: string; municipalityCode: string };
   species: ControlledSpecies;
   signalGroup: ControlledSignalGroup;
   observedPattern: ControlledObservedPattern;
@@ -112,11 +112,15 @@ type VeterinaryObservationV2 = {
     exposure?: ControlledExposure;
     interval?: ControlledInterval;
   };
+  technicalNote?: {
+    schemaVersion: "technical-note-v1";
+    text: string;
+  };
   consentVersion: string;
 };
 ```
 
-O cliente envia apenas esse input controlado. O servidor acrescenta `submissionId`, `receivedAt`, `schemaVersion`, `source`, `integrityStatus`, `retentionVersion` e `expiresAt`. Campos desconhecidos ou proibidos são rejeitados.
+O cliente envia apenas esse input controlado. O município é obrigatório e a combinação UF + código é validada no catálogo completo. A nota opcional tem no máximo 280 caracteres e falha fechada para padrões, termos proibidos ou palavras fora do dicionário versionado. O servidor acrescenta `submissionId`, `receivedAt`, `schemaVersion`, `source`, `integrityStatus`, `retentionVersion`, `expiresAt` e as versões da política/dicionário da nota. Campos desconhecidos ou proibidos são rejeitados.
 
 ### Coleções
 
@@ -145,7 +149,7 @@ O cliente envia apenas esse input controlado. O servidor acrescenta `submissionI
 
 ## 5. Privacidade e integridade
 
-- Nenhum nome, CRMV, CPF, email, telefone, produtor, propriedade, endereço, coordenada precisa, empresa, marca, fabricante, produto ou texto livre entra no input V2.
+- Nenhum nome, CRMV, CPF, email, telefone, produtor, propriedade, endereço, coordenada precisa, empresa, marca, fabricante ou produto entra no input V2. A única exceção textual é `technical-note-v1`, curta e fail-closed, restrita ao registro protegido e excluída da análise/exportação.
 - UID autenticado é usado transitoriamente para autorização/rate control e convertido em HMAC no sidecar; não entra na observação nem na saída SAPSA.
 - IP e User-Agent não serão lidos nem persistidos pelo código V2.
 - Duplicatas nunca são apagadas automaticamente: recebem flag técnica e são excluídas ou reduzidas na agregação conforme regra documentada.
@@ -176,6 +180,8 @@ O cliente envia apenas esse input controlado. O servidor acrescenta `submissionI
 - 401 sem token e 403 sem papel SAPSA;
 - flag V2 false por padrão;
 - vocabulário sem diagnóstico, causalidade, probabilidade ou desempenho.
+- nota segura/empresa/fabricante/marca/medicamento/CRMV/identificadores e ausência de persistência quando rejeitada;
+- município ausente, inexistente ou incompatível com a UF;
 
 ## 7. Rollback
 

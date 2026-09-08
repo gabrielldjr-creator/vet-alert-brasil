@@ -14,7 +14,7 @@ export async function loadSapsaSummary() {
   }
   const records = snapshot.docs.map((doc) => {
     const data = doc.data();
-    return { receivedAt: data.receivedAt.toDate(), territory: data.territory, species: data.species, signalGroup: data.signalGroup, source: data.sourceChannel ?? data.source, qualityFlags: data.qualityFlags };
+    return { receivedAt: data.receivedAt.toDate(), territory: data.territory, species: data.species, signalGroup: data.signalGroup, source: data.sourceChannel ?? data.source, qualityFlags: data.qualityFlags, economicOperationalContext: data.economicOperationalContext };
   });
   return buildSapsaSummary(records, {
     minimumCell: policy.minimumAggregateCell,

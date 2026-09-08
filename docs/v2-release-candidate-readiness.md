@@ -1,6 +1,6 @@
 # VetAlert V2 — release-candidate readiness
 
-Data: 6 de setembro de 2026  
+Data: 7 de setembro de 2026
 Stack avaliado: PR #129 (`codex/vetalert-next-firebase-compat`) + `codex/vetalert-v2-rc-hardening`  
 Versões: Next.js 16.3.4, Firebase Web 12.18.0, Firebase Admin 14.3.0, Node.js 24.19.0, Java Temurin JRE 21.0.12.1  
 Decisão: **release candidate técnico em draft; NO-GO para produção**
@@ -16,18 +16,22 @@ Nenhum deploy, merge, alias, variável de produção, dado Firebase, permissão 
 - Mantém `VETALERT_V2_ENABLED` default-off e todas as rotas V2 isoladas.
 - Expande a denylist explícita para empresa/organização, GPS, geografia precisa, dispositivo e demais identificadores; o schema fechado continua sendo a barreira principal.
 - Retorna erros JSON V2 com `private, no-store` e `nosniff`; JSON malformado agora recebe 400, não 503.
-- Trata falha/exception da consulta IBGE como 502 e apresenta no formulário uma mensagem acessível, mantendo município opcional.
+- Substitui a consulta IBGE em runtime por snapshot oficial estático `ibge-municipalities-2025`, com 5.571 entradas/27 UFs, e torna município obrigatório com validação server-side da combinação UF + código.
 - Impede double-submit com ref síncrona além do estado visual já existente.
 - Move foco para a nova etapa e para erros de submissão; mantém teclado, `fieldset`/`legend`, estados desabilitados e anúncios live/status.
 - Uniformiza a cópia do onboarding como “piloto controlado”.
 - Substitui o scan arbitrário dos 100 sidecars por queries limitadas às janelas reais de taxa e duplicidade.
-- Versiona a política de integridade como `integrity-v2-2` e registra `integrityKeyVersion` sem expor a chave.
+- Versiona a política de integridade como `integrity-v2-3`, registra `integrityKeyVersion` sem expor a chave e mantém o fingerprint limitado à observação central, impedindo que alterações no módulo opcional contornem a suspeita de duplicidade.
 - Versiona os índices compostos exigidos pelas novas queries, sem aplicá-los em produção.
 - Normaliza limiares de recorrência/emergência/sustentação para nunca ficarem abaixo de small-cell ou fora de ordem.
 - Corrige `suspiciousRecordsExcluded` por célula; mantém o total global separado.
 - Expõe somente a contagem agregada de canais no dashboard/CSV, sem nomes de fonte por registro.
 - Faz o repositório SAPSA falhar fechado quando o cap configurado é ultrapassado, em vez de publicar resumo silenciosamente incompleto.
-- Atualiza a metodologia para `sapsa-v2-exploratory-2`, explicitamente não validada cientificamente.
+- Acrescenta `economic-operational-context-v1` como seção opcional, independente e estritamente controlada, sem valores monetários, crédito, identidade ou texto livre.
+- Acrescenta `technical-note-v1` como única nota opcional: máximo 280 caracteres, validação cliente/servidor, normalização, padrões, denylist e vocabulário versionado fail-closed. Termo desconhecido bloqueia o envio; não há LLM nem serviço externo.
+- Mantém a nota aceita somente no documento operacional protegido, fora do fingerprint, das projeções SAPSA, clusters, rankings, comparações e CSV. Rejeições não criam observação, sidecar, audit log ou alerta legado, e a resposta não contém termo/body/detalhe do validador.
+- Exige decisão contextual antes de qualquer manifestação configurada: “sim” oferece o canal oficial e ainda permite continuar no VetAlert; “não” continua diretamente. Ambos enviam somente o mesmo payload observacional, e a pergunta/decisão nunca é persistida.
+- Atualiza a metodologia para `sapsa-v2-exploratory-3`, explicitamente não validada cientificamente, com dupla supressão do módulo econômico/operacional.
 
 ## Matriz completa
 
@@ -42,11 +46,18 @@ Nenhum deploy, merge, alias, variável de produção, dado Firebase, permissão 
 | V2 separado do legado | PASS | Route Handler/Admin SDK grava somente `veterinaryObservationsV2`, `submissionIntegrityV2`, `auditLogsV2` |
 | Nomes/CRMV/CPF/contatos | PASS | Sem campos no cliente; allowlist + denylist recursiva e testes server-side |
 | Produtor/propriedade/empresa/marca/fabricante | PASS | Sem campos; chaves explícitas rejeitadas e valores permitidos são enums fechados |
-| GPS/IP geolocation no V2 | PASS | Sem chamada de geolocalização; município é seleção opcional; IP/User-Agent não entram no documento da aplicação |
-| Texto livre no primeiro registro | PASS | Nenhum textarea/input livre sanitário no V2; manifestações e terapêutica são controladas |
+| GPS/IP geolocation no V2 | PASS | Sem chamada de geolocalização; município obrigatório vem de catálogo estático; IP/User-Agent não entram no documento da aplicação |
+| Município oficial obrigatório | PASS | Snapshot `ibge-municipalities-2025`, 5.571 entradas/27 UFs; ausência, código inexistente e UF incompatível são rejeitados server-side; nenhuma chamada IBGE em runtime |
+| Nota técnica opcional | PASS | `technical-note-v1`, máximo 280 caracteres; fail-closed no cliente e servidor para empresa, fabricante, marca, medicamento comercial, CRMV, contato, URL, endereço, identificador e termo desconhecido |
+| Limitação do detector textual | PASS com ressalva explícita | Barreira determinística, não garantia de reconhecimento de 100% dos nomes comerciais; corpus curado final rejeitou 0/50 notas legítimas após uma calibração inicial de 2/50 |
+| Isolamento analítico da nota | PASS | Nota fora do fingerprint, tipo agregado, repositório SAPSA, dashboard e CSV; coleção raw V2 permanece client-denied |
 | Contexto terapêutico controlado | PASS | Categoria, princípio ativo, exposição e intervalo por allowlists opcionais |
+| Contexto econômico/operacional V1 | PASS | Seção separada e opcional; quatro enums amplos; versão/unknown/proibidos validados no cliente e servidor |
+| Sem finanças/decisão individual | PASS | Renda, valor, dívida, crédito/score, financiamento, ranking e scores individuais são ausentes da UI e rejeitados pelo schema |
+| Decisão de canal oficial | PASS local | “Sim” e “não” permitem salvar a observação descritiva; “sim” mantém o link oficial disponível; nenhuma escolha chama instituição externa ou entra no payload |
+| Doença/diagnóstico/suspeita/surto/notificação no documento | PASS | Sem campos no payload; chaves correspondentes são rejeitadas server-side; decisão oficial é estado transitório |
 | Schema cliente/servidor versionado | PASS | Tipos/validador compartilhados; `schemaVersion=2`, consentimento e metadados gerados no servidor |
-| Validação server-side | PASS | Payload válido 201; inválido/proibido/unknown/forjado 400; JSON malformado 400; content-type inválido 415 |
+| Validação server-side | PASS | Payload/nota válidos 201; nota, município, campo proibido/unknown/forjado inválidos 400 genérico; JSON malformado 400; content-type inválido 415 |
 | Metadados imutáveis pelo cliente | PASS | Cliente não pode escrever coleções V2 e campos server-only são rejeitados; `submissionId` UUID e timestamps no servidor |
 | HMAC fail-closed | PASS no emulador | Segredo curto retorna 503 sem persistência; digests de 64 hex e key version auditada |
 | Duplicidade | PASS no emulador | Mesmo fingerprint na janela é preservado e marcado para revisão |
@@ -57,17 +68,18 @@ Nenhum deploy, merge, alias, variável de produção, dado Firebase, permissão 
 | SAPSA UI com claims reais | NOT TESTED | Não há login institucional UI nem staging com claims reais nesta fase |
 | Saída aggregate-only | PASS | API/CSV não contêm ID, digest, timestamp exato, município raw ou documento individual |
 | Small-cell suppression | PASS | Células abaixo do mínimo não entram em API/CSV; limiares nunca ficam abaixo do mínimo |
+| Small-cell do contexto opcional | PASS | Módulo exige mínimo de registros e cada valor categórico aplica novamente o mesmo limiar; categorias pequenas são omitidas |
 | Explicabilidade por célula | PASS | Compatíveis, municípios, períodos, canais e suspeitos locais; metodologia/versionamento incluídos |
 | Cap analítico | PASS no código | Excesso falha 503 em vez de truncar; carga/custo real ainda precisa de staging |
 | Audit log de submissão/export | PASS no emulador | Eventos mínimos com digest e key version; export sem papel é negado |
 | Mobile 390×844 | PASS local | Sem overflow no onboarding |
 | Teclado/foco/back | PASS local | Enter, foco de etapa, back preservando estado e foco no erro |
 | Falha de rede/refresh | PASS local | Mensagem afirma não envio; URL preservada; refresh retorna ao onboarding |
-| Falha do serviço territorial | PASS local | Mensagem `role=status`; município continua opcional |
+| Falha do catálogo territorial | PASS local | Mensagem `role=status`; município e avanço permanecem bloqueados |
 | Double submission | PASS local | Double-click produz um POST; ref síncrona impede reentrada |
-| Unitários/contrato | PASS | 21/21 no stack combinado |
-| Firebase Emulator | PASS | 7/7 no projeto `demo-vetalert-v2`; nenhum fallback a Firebase real |
-| Browser E2E | PASS | 7/7 Chromium no stack combinado |
+| Unitários/contrato | PASS | 39/39 no stack combinado, incluindo catálogo integral, ausência de logger V2 e corpus de falsos positivos |
+| Firebase Emulator | PASS | 8/8 no projeto `demo-vetalert-v2`; nenhum fallback a Firebase real |
+| Browser E2E | PASS | 12/12 Chromium em execução isolada, incluindo telas V2, nota fail-closed, município obrigatório, mobile, erros, legado vet e agro |
 | TypeScript | PASS | `tsc --noEmit` |
 | Build de produção | PASS | Next 16.3.4 compilou 18 rotas/listagens, incluindo todos os legados e V2 |
 | Lint de código alterado/V2 | PASS | `app/v2`, `app/sapsa`, `app/api`, `lib/v2`, `tests` |
@@ -95,6 +107,9 @@ Nenhum deploy, merge, alias, variável de produção, dado Firebase, permissão 
 1. A primeira execução browser após `npm ci` falhou 7/7 antes de abrir páginas porque o Chromium não estava no cache. O browser 1243 foi instalado em `.tools/playwright-browsers` e a mesma suite passou 7/7.
 2. A primeira tentativa de `npm ci` falhou por tentar gravar cache fora do workspace. O alvo `node_modules` foi validado dentro do checkout, o cache foi movido para `.tools/npm-cache` e o install lockfile-exato passou.
 3. Foi detectado `node_modules` residual com Firebase 12.18 enquanto a branch #127 ainda fixava 12.7. Os resultados provisórios foram descartados. A validação final foi repetida após rebase sobre #129 e install limpo, com Next 16.3.4/Firebase 12.18.0.
+4. A primeira execução Playwright após tornar município obrigatório falhou 6/11 porque o helper do seletor passou a compor seu nome acessível. O V2 recebeu `aria-label="Município"`; a execução seguinte passou 10/11. O teste restante usava um locator de `role=alert` que também encontrava o anunciador de rotas do Next; o locator foi restringido à mensagem da nota. A execução final passou 11/11.
+5. O corpus inicial de 50 notas legítimas rejeitou duas flexões observacionais comuns (`elevado` e `moderado`), taxa de 4%. O vocabulário ainda não publicado foi versionado como `technical-note-dictionary-pt-BR-2026-09-07-v2`; a repetição final rejeitou 0/50, taxa de 0% nesse corpus fechado.
+6. Uma tentativa de reiniciar o Emulator encontrou as portas locais antigas ocupadas, e uma execução Playwright contra a instância Next anterior produziu 401 e dados residuais. Esses resultados foram descartados. O harness passou a exigir Emulator em loopback, projeto `demo-*`, limpar somente os documentos do Emulator e aceitar porta Next isolada; a execução final em 3101 passou 12/12.
 
 Essas falhas não foram mascaradas. Não representam falha final da aplicação, mas demonstram por que a instalação limpa e a checagem das versões resolvidas são gates obrigatórios.
 
@@ -142,7 +157,7 @@ Antes de alegar privacidade do produto completo:
 
 Estado: **BLOCKED**. A chamada read-only `list_teams` retornou lista vazia em 6 de setembro de 2026. Não foi possível localizar projeto, deployment IDs, commits, URLs protegidas, env target ou aliases. Portanto, nenhuma checagem de preview é classificada como PASS.
 
-Quando o scope `colo-prep-ia` estiver disponível, inspecionar flag-off e flag-on por ID/commit, executar as sete jornadas, confirmar 401/403 e ausência de raw, revisar logs redigidos e provar que nenhum alias/configuração de produção mudou.
+Quando o scope `colo-prep-ia` estiver disponível e um preview for autorizado, inspecionar flag-off e flag-on por ID/commit, executar as dez jornadas, confirmar 401/403 e ausência de raw, revisar logs redigidos e provar que nenhum alias/configuração de produção mudou. Nenhum preview foi criado ou alterado neste incremento.
 
 ## Rollback
 

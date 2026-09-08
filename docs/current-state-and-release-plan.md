@@ -43,12 +43,12 @@ Também foram consultados no GitHub os metadados e documentos específicos das t
 | `/privacidade` | legado/público | Política pública | Público |
 | `/sobre` | legado/público | Texto institucional | Público |
 | `/uso-etico` | legado/público | Limites de uso e links ao intake/dashboard | Público |
-| `/v2/onboarding` | V2 | Onboarding e formulário controlado sem texto livre | 404 salvo se `VETALERT_V2_ENABLED` for exatamente `true` |
+| `/v2/onboarding` | V2 | Onboarding controlado com município obrigatório e nota técnica opcional fail-closed | 404 salvo se `VETALERT_V2_ENABLED` for exatamente `true` |
 | `/v2/confirmacao` | V2 | Confirmação genérica sem expor ID | Mesma flag V2 |
 | `/v2/privacidade` | V2 | Limites e garantias qualificadas do piloto | Mesma flag V2 |
 | `/sapsa/v2` | V2 | Shell institucional que busca somente resumo agregado | Flag V2; API exige claim `sapsa_analyst` ou `admin` |
 | `POST /api/v2/observations` | V2/server | Autentica token, valida schema e persiste observação/sidecars | Flag V2 + qualquer token Firebase válido |
-| `GET /api/v2/territories` | V2/server | Consulta municípios na API IBGE | Flag V2 + UF sintaticamente válida; sem autenticação adicional |
+| `GET /api/v2/territories` | V2/server | Filtra o snapshot local versionado de municípios IBGE | Flag V2 + UF presente no catálogo; sem autenticação adicional |
 | `GET /api/v2/sapsa/summary` | V2/server | Retorna agregados com supressão | Flag V2 + papel SAPSA verificado no servidor |
 | `GET /api/v2/sapsa/export` | V2/server | Retorna CSV agregado e grava evento de exportação | Flag V2 + papel SAPSA verificado no servidor |
 
@@ -81,7 +81,7 @@ O contrato inclui `source: "agro_retail"`, `signalType: "field_retail"`, campos 
 
 ## 1.4 Fluxo V2 isolado
 
-O cliente V2 usa vocabulário fechado, sem textarea, nome, CRMV, contato, produtor, propriedade, endereço, GPS, marca ou fabricante. Ele autentica com Firebase, envia bearer token a `/api/v2/observations` e nunca escreve diretamente em Firestore.
+O cliente V2 usa campos estruturados e uma única nota técnica opcional de 280 caracteres. A nota aplica padrões e vocabulário observacional versionado com rejeição de termos desconhecidos; nome, CRMV, contato, produtor, propriedade, endereço, GPS, empresa, marca e fabricante continuam proibidos. O município é obrigatório e vem de snapshot IBGE incorporado. O cliente autentica com Firebase, envia bearer token a `/api/v2/observations` e nunca escreve diretamente em Firestore.
 
 O servidor:
 

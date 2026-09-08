@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getV2OfficialChannelUrl, getV2Policy, isV2Enabled } from "../lib/v2/config";
-import { contextualOfficialGuidanceGroups, officialGuidanceCopy, requiresContextualOfficialGuidance } from "../lib/v2/official-guidance";
+import { allowsObservationalSubmission, contextualOfficialGuidanceGroups, officialGuidanceCopy, requiresContextualOfficialGuidance } from "../lib/v2/official-guidance";
 import { hasSapsaRole } from "../lib/v2/security";
 import { AccessError, requireSapsaRole } from "../lib/v2/server-auth";
 
@@ -12,17 +12,13 @@ test("V2 feature flag is disabled by default and requires exact true", () => {
 });
 
 test("contextual official-channel guidance is limited to the configured observational groups", () => {
-  assert.deepEqual([...contextualOfficialGuidanceGroups], ["respiratorio", "neurologico", "reprodutivo"]);
-  assert.equal(requiresContextualOfficialGuidance("respiratorio"), true);
-  assert.equal(requiresContextualOfficialGuidance("neurologico"), true);
-  assert.equal(requiresContextualOfficialGuidance("reprodutivo"), true);
-  assert.equal(requiresContextualOfficialGuidance("digestivo"), false);
+  assert.deepEqual([...contextualOfficialGuidanceGroups], ["respiratorio", "digestivo", "locomotor", "neurologico", "dermatologico", "reprodutivo", "populacional"]);
+  for (const group of contextualOfficialGuidanceGroups) assert.equal(requiresContextualOfficialGuidance(group), true, group);
   assert.equal(officialGuidanceCopy.title, "Como este registro funciona");
-  assert.deepEqual([...officialGuidanceCopy.paragraphs], [
-    "O VetAlert é um registro observacional independente. O conteúdo enviado não é encaminhado automaticamente ao MAPA, ao e-SISBRAVET ou a qualquer outro sistema ou instituição.",
-    "O formulário não solicita nome do veterinário, CRMV, nome do produtor, propriedade, fabricante, marca ou coordenada individual. Por isso, o VetAlert não é um canal de notificação oficial.",
-    "Se, considerando o contexto clínico, houver suspeita de doença ou síndrome de notificação obrigatória, o profissional deve comunicar imediatamente o Serviço Veterinário Oficial ou o e-SISBRAVET. O registro no VetAlert nunca substitui essa obrigação.",
-  ]);
+  assert.equal(officialGuidanceCopy.notice, "O VetAlert registra observações independentes para fins de inteligência operacional agregada. Este registro não é uma notificação oficial e não é encaminhado automaticamente ao MAPA, ao e-SISBRAVET ou a outras instituições. O formulário não solicita os dados necessários para uma notificação oficial. Se, considerando o contexto clínico, houver suspeita de doença ou síndrome de notificação obrigatória, o profissional deve comunicar também e de forma independente ao Serviço Veterinário Oficial ou ao e-SISBRAVET. O registro observacional no VetAlert não substitui essa obrigação.");
+  assert.equal(allowsObservationalSubmission("respiratorio", null), false);
+  assert.equal(allowsObservationalSubmission("respiratorio", "official_channel_also"), true);
+  assert.equal(allowsObservationalSubmission("respiratorio", "observational"), true);
 });
 
 test("official channel link is optional and restricted to approved HTTPS government hosts", () => {

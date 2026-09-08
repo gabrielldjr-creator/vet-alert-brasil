@@ -14,7 +14,15 @@ export async function persistObservationV2(input: VeterinaryObservationV2Input, 
   const integrityExpiresAt = Timestamp.fromMillis(now.getTime() + policy.integrityRetentionDays * 86400000);
   const submissionId = randomUUID();
   const originDigest = hmacDigest(secret, "origin-v1", authenticatedUid);
-  const fingerprint = hmacDigest(secret, "observation-v1", stableFingerprint(input));
+  const fingerprint = hmacDigest(secret, "observation-v1", stableFingerprint({
+    territory: input.territory,
+    species: input.species,
+    signalGroup: input.signalGroup,
+    observedPattern: input.observedPattern,
+    animalCountBand: input.animalCountBand,
+    attentionLevel: input.attentionLevel,
+    observationPeriod: input.observationPeriod,
+  }));
   const db = getAdminFirestore();
 
   return db.runTransaction(async (transaction) => {
@@ -30,7 +38,7 @@ export async function persistObservationV2(input: VeterinaryObservationV2Input, 
     const observation = buildObservationDocument(input, { submissionId, receivedAt, expiresAt: observationExpiresAt, duplicateSuspected, rateLimitExceeded });
 
     transaction.create(db.collection("veterinaryObservationsV2").doc(submissionId), observation);
-    transaction.create(integrity.doc(submissionId), { submissionId, originDigest, fingerprint, receivedAt, expiresAt: integrityExpiresAt, duplicateSuspected, rateLimitExceeded, policyVersion: "integrity-v2-2", integrityKeyVersion: policy.integrityKeyVersion });
+    transaction.create(integrity.doc(submissionId), { submissionId, originDigest, fingerprint, receivedAt, expiresAt: integrityExpiresAt, duplicateSuspected, rateLimitExceeded, policyVersion: "integrity-v2-3", integrityKeyVersion: policy.integrityKeyVersion });
     transaction.create(db.collection("auditLogsV2").doc(), { event: "observation.accepted", submissionId, actorDigest: originDigest, occurredAt: receivedAt, expiresAt: integrityExpiresAt, schemaVersion: 2, integrityKeyVersion: policy.integrityKeyVersion, outcome: duplicateSuspected || rateLimitExceeded ? "accepted_for_review" : "accepted" });
     return { submissionId, accepted: true, reviewRequired: duplicateSuspected || rateLimitExceeded };
   });

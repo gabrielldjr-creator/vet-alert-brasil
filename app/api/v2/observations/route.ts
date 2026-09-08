@@ -2,6 +2,7 @@ import { AccessError, verifyRequestToken } from "../../../../lib/v2/server-auth"
 import { isV2Enabled } from "../../../../lib/v2/config";
 import { validateObservationV2 } from "../../../../lib/v2/schema";
 import { persistObservationV2 } from "../../../../lib/v2/submission";
+import { isOfficialMunicipalityPair } from "../../../../lib/v2/municipalities";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,10 @@ export async function POST(request: Request) {
     const body: unknown = await request.json();
     if (JSON.stringify(body).length > 16384) return json({ error: "Payload excede o limite" }, 413);
     const validation = validateObservationV2(body);
-    if (!validation.ok) return json({ error: "Payload inválido", details: validation.errors }, 400);
+    if (!validation.ok) return json({ error: "Payload inválido. Revise os campos e reformule qualquer nota técnica." }, 400);
+    if (!isOfficialMunicipalityPair(validation.value.territory.stateCode, validation.value.territory.municipalityCode)) {
+      return json({ error: "Payload inválido. Revise os campos e reformule qualquer nota técnica." }, 400);
+    }
     const result = await persistObservationV2(validation.value, token.uid);
     return json(result, 201);
   } catch (error) {
