@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { signInAnonymously } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth } from "../../../lib/firebase";
 import { stateOptions, type MunicipalityOption } from "../../../lib/regions";
 import { V2_CONSENT_VERSION } from "../../../lib/v2/config";
-import { validateObservationV2, type VeterinaryObservationV2Input } from "../../../lib/v2/schema";
+import { allowsObservationalSubmission, officialGuidanceCopy, requiresContextualOfficialGuidance, type OfficialGuidanceDecision } from "../../../lib/v2/official-guidance";
+import { ECONOMIC_OPERATIONAL_CONTEXT_VERSION, validateObservationV2, type EconomicOperationalContextV1, type VeterinaryObservationV2Input } from "../../../lib/v2/schema";
+import { TECHNICAL_NOTE_GENERIC_ERROR, TECHNICAL_NOTE_MAX_LENGTH, TECHNICAL_NOTE_SCHEMA_VERSION, validateTechnicalNoteText } from "../../../lib/v2/technical-note";
 import { Button } from "../../../components/Button";
 import { Card } from "../../../components/Card";
 import { Select } from "../../../components/Select";
+import { Textarea } from "../../../components/Textarea";
 
 const species = [
   ["bovinos", "Bovinos"], ["equinos", "Equinos"], ["suinos", "Suínos"], ["aves", "Aves"],
@@ -28,41 +31,128 @@ const patterns = [
 const bands = [["1", "1 animal"], ["2_5", "2 a 5 animais"], ["6_20", "6 a 20 animais"], ["mais_20", "Mais de 20 animais"]] as const;
 const attention = [["observed", "Observado"], ["elevated", "Atenção elevada"], ["urgent", "Urgente — percepção profissional"]] as const;
 const periods = [["ultimas_24h", "Últimas 24 horas"], ["ultimos_7d", "Últimos 7 dias"], ["ultimos_30d", "Últimos 30 dias"]] as const;
+const officialLinkStyles = "inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 transition-colors hover:border-emerald-200 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600";
+const officialContinueStyles = "inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600";
+const officialStopStyles = "inline-flex items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700";
 
-export default function AlertFormClientV2() {
+const veterinaryCareAccessOptions = [["adequate", "Adequado"], ["delayed", "Com atraso"], ["unavailable", "Indisponível"], ["unknown", "Desconhecido"]] as const;
+const inputsOrServicesAccessOptions = [["adequate", "Adequado"], ["limited", "Limitado"], ["unknown", "Desconhecido"]] as const;
+const preventiveMeasuresAbilityOptions = [["not_limited", "Não limitada"], ["limited", "Limitada"], ["unknown", "Desconhecida"]] as const;
+const carePressureOptions = [["not_observed", "Não observada"], ["observed", "Observada"], ["unknown", "Desconhecida"]] as const;
+
+export default function AlertFormClientV2({ officialChannelUrl = null }: { officialChannelUrl?: string | null }) {
   const router = useRouter();
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [step, setStep] = useState(0);
   const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
+  const [territoryError, setTerritoryError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ stateCode: "", municipalityCode: "", species: "", signalGroup: "", observedPattern: "", animalCountBand: "", attentionLevel: "", observationPeriod: "", category: "", activeIngredient: "", exposure: "", interval: "" });
+  const [officialGuidanceOpen, setOfficialGuidanceOpen] = useState(false);
+  const [officialGuidanceDecision, setOfficialGuidanceDecision] = useState<OfficialGuidanceDecision>(null);
+  const submittingRef = useRef(false);
+  const stepHeadingRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const observedPatternRef = useRef<HTMLSelectElement>(null);
+  const guidanceTitleRef = useRef<HTMLHeadingElement>(null);
+  const officialLinkRef = useRef<HTMLAnchorElement>(null);
+  const guidanceContinueRef = useRef<HTMLButtonElement>(null);
+  const guidanceOfficialRef = useRef<HTMLButtonElement>(null);
+  const guidanceVetAlertContinueRef = useRef<HTMLButtonElement>(null);
+  const [form, setForm] = useState({ stateCode: "", municipalityCode: "", species: "", signalGroup: "", observedPattern: "", animalCountBand: "", attentionLevel: "", observationPeriod: "", category: "", activeIngredient: "", exposure: "", interval: "", accessToVeterinaryCare: "", accessToNecessaryInputsOrServices: "", abilityToImplementPreventiveMeasures: "", logisticalOrFinancialPressureAffectingCare: "", technicalNote: "" });
 
   useEffect(() => {
     let active = true;
     if (!form.stateCode) return;
     fetch(`/api/v2/territories?state=${encodeURIComponent(form.stateCode)}`)
-      .then((response) => response.ok ? response.json() as Promise<MunicipalityOption[]> : [])
-      .then((items) => { if (active) setMunicipalities(items); })
-      .catch(() => { if (active) setMunicipalities([]); });
+      .then((response) => {
+        if (!response.ok) throw new Error("territory_lookup_failed");
+        return response.json() as Promise<MunicipalityOption[]>;
+      })
+      .then((items) => { if (active) { setMunicipalities(items); setTerritoryError(""); } })
+      .catch(() => { if (active) { setMunicipalities([]); setTerritoryError("Não foi possível carregar a lista local de municípios. O envio permanece bloqueado até que a lista esteja disponível."); } });
     return () => { active = false; };
   }, [form.stateCode]);
 
+  useEffect(() => {
+    if (onboardingStep >= 3) stepHeadingRef.current?.focus();
+  }, [onboardingStep, step]);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
+  useEffect(() => {
+    if (officialGuidanceOpen) guidanceTitleRef.current?.focus();
+  }, [officialGuidanceOpen, officialGuidanceDecision]);
+
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const changeStateCode = (stateCode: string) => {
+    setMunicipalities([]);
+    setTerritoryError("");
+    setForm((current) => ({ ...current, stateCode, municipalityCode: "" }));
+  };
   const selectedPattern = useMemo(() => patterns.find((item) => item[1] === form.observedPattern), [form.observedPattern]);
+  const economicContextIncluded = Boolean(form.accessToVeterinaryCare || form.accessToNecessaryInputsOrServices || form.abilityToImplementPreventiveMeasures || form.logisticalOrFinancialPressureAffectingCare);
+  const technicalNoteValidation = useMemo(() => form.technicalNote.trim() ? validateTechnicalNoteText(form.technicalNote) : null, [form.technicalNote]);
+  const technicalNoteInvalid = technicalNoteValidation?.ok === false;
+  const municipalityCodes = useMemo(() => new Set(municipalities.map((municipality) => String(municipality.code))), [municipalities]);
+  const municipalityIsValid = municipalityCodes.has(form.municipalityCode);
+  const maySubmitObservationalRecord = allowsObservationalSubmission(selectedPattern?.[0], officialGuidanceDecision);
   const stepValid = step === 0
-    ? Boolean(form.species && form.observedPattern && form.animalCountBand && form.attentionLevel)
-    : step === 1 ? Boolean(form.stateCode && form.observationPeriod) : true;
+    ? Boolean(form.species && form.observedPattern && form.animalCountBand && form.attentionLevel && maySubmitObservationalRecord)
+    : step === 1 ? Boolean(form.stateCode && municipalityIsValid && form.observationPeriod && !technicalNoteInvalid) : true;
+
+  const selectObservedPattern = (value: string) => {
+    const nextPattern = patterns.find((item) => item[1] === value);
+    update("observedPattern", value);
+    setOfficialGuidanceDecision(null);
+    setOfficialGuidanceOpen(requiresContextualOfficialGuidance(nextPattern?.[0]));
+  };
+
+  const continueObservationalRecord = () => {
+    setOfficialGuidanceDecision("observational");
+    setOfficialGuidanceOpen(false);
+    requestAnimationFrame(() => observedPatternRef.current?.focus());
+  };
+
+  const chooseOfficialChannelAlso = () => setOfficialGuidanceDecision("official_channel_also");
+
+  const continueAfterOfficialDecision = () => {
+    setOfficialGuidanceOpen(false);
+    requestAnimationFrame(() => observedPatternRef.current?.focus());
+  };
+
+  const keepFocusInsideGuidance = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") event.preventDefault();
+    if (event.key !== "Tab") return;
+    const focusable = [officialLinkRef.current, guidanceOfficialRef.current, guidanceContinueRef.current, guidanceVetAlertContinueRef.current].filter((element): element is HTMLAnchorElement | HTMLButtonElement => element !== null);
+    const first = focusable.at(0);
+    const last = focusable.at(-1);
+    if (!first || !last) return;
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === guidanceTitleRef.current)) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
 
   const submit = async () => {
+    if (!maySubmitObservationalRecord) {
+      setOfficialGuidanceOpen(true);
+      return;
+    }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError(""); setSubmitting(true);
     try {
       const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
       const token = await user.getIdToken();
       const therapeuticContext = Object.fromEntries(Object.entries({ category: form.category, activeIngredient: form.activeIngredient, exposure: form.exposure, interval: form.interval }).filter(([, value]) => value));
+      const economicOperationalValues = Object.fromEntries(Object.entries({ accessToVeterinaryCare: form.accessToVeterinaryCare, accessToNecessaryInputsOrServices: form.accessToNecessaryInputsOrServices, abilityToImplementPreventiveMeasures: form.abilityToImplementPreventiveMeasures, logisticalOrFinancialPressureAffectingCare: form.logisticalOrFinancialPressureAffectingCare }).filter(([, value]) => value));
+      const economicOperationalContext = Object.keys(economicOperationalValues).length ? { schemaVersion: ECONOMIC_OPERATIONAL_CONTEXT_VERSION, ...economicOperationalValues } as EconomicOperationalContextV1 : undefined;
+      const noteValidation = form.technicalNote.trim() ? validateTechnicalNoteText(form.technicalNote) : null;
+      if (noteValidation && !noteValidation.ok) throw new Error("invalid_payload");
       const payload: VeterinaryObservationV2Input = {
-        territory: { stateCode: form.stateCode, ...(form.municipalityCode ? { municipalityCode: form.municipalityCode } : {}) },
+        territory: { stateCode: form.stateCode, municipalityCode: form.municipalityCode },
         species: form.species as VeterinaryObservationV2Input["species"],
         signalGroup: selectedPattern?.[0] as VeterinaryObservationV2Input["signalGroup"],
         observedPattern: form.observedPattern as VeterinaryObservationV2Input["observedPattern"],
@@ -70,26 +160,29 @@ export default function AlertFormClientV2() {
         attentionLevel: form.attentionLevel as VeterinaryObservationV2Input["attentionLevel"],
         observationPeriod: form.observationPeriod as VeterinaryObservationV2Input["observationPeriod"],
         ...(Object.keys(therapeuticContext).length ? { therapeuticContext: therapeuticContext as VeterinaryObservationV2Input["therapeuticContext"] } : {}),
+        ...(economicOperationalContext ? { economicOperationalContext } : {}),
+        ...(noteValidation?.ok ? { technicalNote: { schemaVersion: TECHNICAL_NOTE_SCHEMA_VERSION, text: noteValidation.value } } : {}),
         consentVersion: V2_CONSENT_VERSION,
       };
       const validation = validateObservationV2(payload);
       if (!validation.ok) throw new Error("invalid_payload");
       const response = await fetch("/api/v2/observations", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(validation.value) });
-      if (!response.ok) throw new Error("submission_failed");
+      if (!response.ok) throw new Error(response.status === 400 ? "invalid_payload" : "submission_failed");
       router.push("/v2/confirmacao");
-    } catch { setError("Não foi possível registrar agora. Seus dados não foram enviados; tente novamente."); }
-    finally { setSubmitting(false); }
+    } catch (caught) { setError(caught instanceof Error && caught.message === "invalid_payload" ? "Não foi possível validar o registro. Confira o município e reformule a nota técnica sem dados específicos." : "Não foi possível registrar agora. Seus dados não foram enviados; tente novamente."); }
+    finally { submittingRef.current = false; setSubmitting(false); }
   };
 
   if (onboardingStep < 3) {
     return (
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
         <Card className="space-y-5 border-emerald-100 bg-emerald-50/70 p-6 sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">VetAlert V2 · piloto aberto</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">VetAlert V2 · piloto controlado</p>
           {onboardingStep === 0 ? <>
             <h1 className="text-3xl font-semibold text-slate-900">Registre o que você observa no campo.</h1>
-            <p className="text-slate-700">O seu registro ajuda a transformar observações isoladas em uma leitura territorial mais completa. Você registra no VetAlert; o SAPSA organiza convergências por território, espécie e período.</p>
-            {showHowItWorks ? <div className="rounded-xl bg-white p-4 text-sm text-slate-700"><p>O VetAlert recebe uma observação estruturada sem nomes ou texto livre. O SAPSA reúne apenas resultados agregados, aplica proteção de pequenas células e apresenta padrões para revisão humana.</p></div> : null}
+            <p className="font-medium text-emerald-900">Inteligência de campo independente e agregada para decisões operacionais.</p>
+            <p className="text-slate-700">Observações estruturadas ajudam a revelar condições de campo consolidadas por território, espécie e período, mantendo a comunicação oficial completamente separada.</p>
+            {showHowItWorks ? <div className="space-y-2 rounded-xl bg-white p-4 text-sm text-slate-700"><p>O VetAlert recebe uma observação estruturada sem nomes. A nota técnica opcional é curta e aceita somente vocabulário observacional controlado por uma barreira fail-closed. O SAPSA reúne apenas resultados agregados, aplica proteção de pequenas células e apresenta padrões para revisão humana.</p><p>Os resultados agregados podem apoiar decisões operacionais de seguradoras, empresas de saúde animal, distribuidores, bancos e produtores. Não constituem diagnóstico, notificação oficial ou sistema oficial de alerta.</p></div> : null}
             <div className="flex flex-wrap gap-3"><Button type="button" onClick={() => setOnboardingStep(1)}>Começar</Button><Button type="button" variant="secondary" onClick={() => setShowHowItWorks((value) => !value)} aria-expanded={showHowItWorks}>Como funciona</Button></div>
           </> : null}
           {onboardingStep === 1 ? <>
@@ -102,7 +195,7 @@ export default function AlertFormClientV2() {
             <p className="text-sm font-semibold text-emerald-800">Configuração mínima</p>
             <h1 className="text-2xl font-semibold text-slate-900">Defina seu foco inicial.</h1>
             <p className="text-sm text-slate-600">Escolha apenas território e espécie. Não solicitamos nome, CRMV, produtor, propriedade, GPS ou endereço.</p>
-            <Select name="setupStateCode" label="Território de atuação (UF)" value={form.stateCode} onChange={(event) => setForm((current) => ({ ...current, stateCode: event.target.value, municipalityCode: "" }))} required><option value="">Selecione</option>{stateOptions.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
+            <Select name="setupStateCode" label="Território de atuação (UF)" value={form.stateCode} onChange={(event) => changeStateCode(event.target.value)} required><option value="">Selecione</option>{stateOptions.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
             <Select name="setupSpecies" label="Espécie ou grupo de produção" value={form.species} onChange={(event) => update("species", event.target.value)} required><option value="">Selecione</option>{species.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
             <div className="flex justify-between gap-3"><Button type="button" variant="secondary" onClick={() => setOnboardingStep(1)}>Voltar</Button><Button type="button" onClick={() => setOnboardingStep(3)} disabled={!form.stateCode || !form.species}>Continuar para o registro</Button></div>
           </> : null}
@@ -116,22 +209,24 @@ export default function AlertFormClientV2() {
       <Card className="space-y-3 border-emerald-100 bg-emerald-50/70 p-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">VetAlert V2 · piloto controlado</p>
         <h1 className="text-3xl font-semibold text-slate-900">Registre o que você observa no campo.</h1>
-        <p className="text-slate-700">O seu registro ajuda a transformar observações isoladas em uma leitura territorial mais completa. Você registra no VetAlert; o SAPSA organiza convergências por território, espécie e período.</p>
+        <p className="font-medium text-emerald-900">Inteligência de campo independente e agregada para decisões operacionais.</p>
+        <p className="text-slate-700">Observações estruturadas ajudam a revelar condições de campo consolidadas por território, espécie e período, mantendo a comunicação oficial completamente separada.</p>
         <p className="text-sm text-slate-600">A leitura institucional é agregada e serve como contexto para revisão técnica. Não substitui avaliação profissional nem o canal oficial aplicável.</p>
       </Card>
 
       <Card className="p-6">
-        <div className="mb-6" aria-live="polite"><p className="text-sm font-semibold">Etapa {step + 1} de 3</p><p className="text-sm text-slate-600">{step === 0 ? "O que foi observado?" : step === 1 ? "Em que território e período?" : "Revisar e enviar."}</p></div>
+        <div ref={stepHeadingRef} tabIndex={-1} className="mb-6 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600" aria-busy={submitting} aria-live="polite"><p className="text-sm font-semibold">Etapa {step + 1} de 3</p><p className="text-sm text-slate-600">{step === 0 ? "O que foi observado?" : step === 1 ? "Em que território e período?" : "Revisar e enviar."}</p></div>
         {step === 0 ? <fieldset className="space-y-4"><legend className="text-xl font-semibold">Observação estruturada</legend>
           <Select name="species" label="Espécie" value={form.species} onChange={(event) => update("species", event.target.value)} required><option value="">Selecione</option>{species.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
-          <Select name="observedPattern" label="Manifestação observada" value={form.observedPattern} onChange={(event) => update("observedPattern", event.target.value)} required><option value="">Selecione</option>{patterns.map(([, value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
+          <Select ref={observedPatternRef} name="observedPattern" label="Manifestação observada" value={form.observedPattern} onChange={(event) => selectObservedPattern(event.target.value)} required><option value="">Selecione</option>{patterns.map(([, value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
           <Select name="animalCountBand" label="Faixa de animais envolvidos" value={form.animalCountBand} onChange={(event) => update("animalCountBand", event.target.value)} required><option value="">Selecione</option>{bands.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
           <Select name="attentionLevel" label="Nível de atenção percebido" helper="Percepção do profissional; não é classificação clínica automática." value={form.attentionLevel} onChange={(event) => update("attentionLevel", event.target.value)} required><option value="">Selecione</option>{attention.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
         </fieldset> : null}
         {step === 1 ? <fieldset className="space-y-4"><legend className="text-xl font-semibold">Território, período e contexto opcional</legend>
           <p className="text-sm text-slate-600">Escolha o território. Não usamos GPS nem geolocalização por IP.</p>
-          <Select name="stateCode" label="Estado" value={form.stateCode} onChange={(event) => setForm((current) => ({ ...current, stateCode: event.target.value, municipalityCode: "" }))} required><option value="">Selecione</option>{stateOptions.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
-          <Select name="municipalityCode" label="Município (opcional)" value={form.municipalityCode} onChange={(event) => update("municipalityCode", event.target.value)} disabled={!form.stateCode}><option value="">Não informar</option>{municipalities.map((item) => <option key={item.code} value={String(item.code)}>{item.name}</option>)}</Select>
+          <Select name="stateCode" label="Estado" value={form.stateCode} onChange={(event) => changeStateCode(event.target.value)} required><option value="">Selecione</option>{stateOptions.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
+          <Select name="municipalityCode" label="Município" aria-label="Município" helper="Obrigatório; catálogo estático IBGE validado novamente no servidor." value={form.municipalityCode} onChange={(event) => update("municipalityCode", event.target.value)} disabled={!form.stateCode || municipalities.length === 0} required><option value="">Selecione</option>{municipalities.map((item) => <option key={item.code} value={String(item.code)}>{item.name}</option>)}</Select>
+          {territoryError ? <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{territoryError}</p> : null}
           <Select name="observationPeriod" label="Período da observação" value={form.observationPeriod} onChange={(event) => update("observationPeriod", event.target.value)} required><option value="">Selecione</option>{periods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
           <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer font-semibold">Contexto terapêutico controlado (opcional)</summary><div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Select name="therapeuticExposure" label="Exposição" value={form.exposure} onChange={(e) => update("exposure", e.target.value)}><option value="">Não informar</option><option value="sim">Sim</option><option value="nao">Não</option><option value="desconhecido">Desconhecido</option></Select>
@@ -139,11 +234,45 @@ export default function AlertFormClientV2() {
             <Select name="activeIngredient" label="Princípio ativo" value={form.activeIngredient} onChange={(e) => update("activeIngredient", e.target.value)}><option value="">Não informar</option><option value="amoxicilina">Amoxicilina</option><option value="doxiciclina">Doxiciclina</option><option value="ivermectina">Ivermectina</option><option value="meloxicam">Meloxicam</option><option value="oxitetraciclina">Oxitetraciclina</option></Select>
             <Select name="therapeuticInterval" label="Intervalo" value={form.interval} onChange={(e) => update("interval", e.target.value)}><option value="">Não informar</option><option value="menos_24h">Menos de 24h</option><option value="1_3d">1–3 dias</option><option value="4_14d">4–14 dias</option><option value="mais_14d">Mais de 14 dias</option></Select>
           </div></details>
+          <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer font-semibold">Contexto econômico e operacional (opcional) · versão 1</summary><div className="mt-4 space-y-4">
+            <p className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700">Use somente categorias amplas. Não informe renda, valores, dívidas, crédito, financiamento, identidade, endereço ou qualquer dado destinado a decisão individual de crédito, seguro ou comércio.</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select name="accessToVeterinaryCare" label="Acesso ao atendimento veterinário" value={form.accessToVeterinaryCare} onChange={(event) => update("accessToVeterinaryCare", event.target.value)}><option value="">Não informar</option>{veterinaryCareAccessOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
+              <Select name="accessToNecessaryInputsOrServices" label="Acesso aos insumos ou serviços necessários" value={form.accessToNecessaryInputsOrServices} onChange={(event) => update("accessToNecessaryInputsOrServices", event.target.value)}><option value="">Não informar</option>{inputsOrServicesAccessOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
+              <Select name="abilityToImplementPreventiveMeasures" label="Capacidade de implementar medidas preventivas" value={form.abilityToImplementPreventiveMeasures} onChange={(event) => update("abilityToImplementPreventiveMeasures", event.target.value)}><option value="">Não informar</option>{preventiveMeasuresAbilityOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
+              <Select name="logisticalOrFinancialPressureAffectingCare" label="Pressão logística ou financeira afetando o cuidado" value={form.logisticalOrFinancialPressureAffectingCare} onChange={(event) => update("logisticalOrFinancialPressureAffectingCare", event.target.value)}><option value="">Não informar</option>{carePressureOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select>
+            </div>
+          </div></details>
+          <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer font-semibold">Nota técnica protegida (opcional) · versão 1</summary><div className="mt-4 space-y-3">
+            <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-950">Use somente descrição observacional genérica. Não informe nomes, CRMV, contatos, endereços, identificadores, produtor, propriedade, empresa, fabricante, marca, produto ou medicamento comercial. Termos não reconhecidos bloqueiam o envio.</p>
+            <Textarea name="technicalNote" label="Nota técnica (opcional)" hint={`${form.technicalNote.length}/${TECHNICAL_NOTE_MAX_LENGTH} caracteres`} helper={technicalNoteInvalid ? undefined : "O texto aceito fica restrito ao registro operacional protegido e não participa do SAPSA ou de exportações."} value={form.technicalNote} onChange={(event) => update("technicalNote", event.target.value)} maxLength={TECHNICAL_NOTE_MAX_LENGTH} rows={4} aria-invalid={technicalNoteInvalid} />
+            {technicalNoteInvalid ? <p role="alert" className="text-sm font-semibold text-red-700">{TECHNICAL_NOTE_GENERIC_ERROR}</p> : null}
+          </div></details>
         </fieldset> : null}
-        {step === 2 ? <section className="space-y-4"><h2 className="text-xl font-semibold">Revisão</h2><dl className="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2"><div><dt className="font-semibold">Espécie</dt><dd>{species.find(([value]) => value === form.species)?.[1]}</dd></div><div><dt className="font-semibold">Manifestação</dt><dd>{selectedPattern?.[2]}</dd></div><div><dt className="font-semibold">Território</dt><dd>{form.stateCode}{form.municipalityCode ? ` · IBGE ${form.municipalityCode}` : ""}</dd></div><div><dt className="font-semibold">Período</dt><dd>{periods.find(([value]) => value === form.observationPeriod)?.[1]}</dd></div></dl><p className="text-sm text-slate-600">Não informe nomes, CRMV, produtor, propriedade, empresa, marca ou fabricante. Este fluxo não possui campo livre.</p><p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">O VetAlert não é canal oficial do MAPA. Se a situação puder exigir comunicação obrigatória, consulte o canal oficial aplicável.</p></section> : null}
-        {error ? <p role="alert" className="mt-4 text-sm font-semibold text-red-700">{error}</p> : null}
+        {step === 2 ? <section className="space-y-4"><h2 className="text-xl font-semibold">Revisão</h2><dl className="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2"><div><dt className="font-semibold">Espécie</dt><dd>{species.find(([value]) => value === form.species)?.[1]}</dd></div><div><dt className="font-semibold">Manifestação</dt><dd>{selectedPattern?.[2]}</dd></div><div><dt className="font-semibold">Território</dt><dd>{form.stateCode} · IBGE {form.municipalityCode}</dd></div><div><dt className="font-semibold">Período</dt><dd>{periods.find(([value]) => value === form.observationPeriod)?.[1]}</dd></div></dl>{economicContextIncluded ? <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">Contexto econômico e operacional opcional incluído no schema {ECONOMIC_OPERATIONAL_CONTEXT_VERSION}. Ele não constitui prova de risco individual.</p> : null}{technicalNoteValidation?.ok ? <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">Nota técnica opcional validada no schema {TECHNICAL_NOTE_SCHEMA_VERSION}. Ela ficará restrita ao registro operacional protegido.</p> : null}<p className="text-sm text-slate-600">Não informe nomes, CRMV, produtor, propriedade, empresa, marca ou fabricante. A nota técnica opcional aceita somente vocabulário observacional controlado.</p><p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">O VetAlert não é canal oficial do MAPA. Se a situação puder exigir comunicação obrigatória, consulte o canal oficial aplicável.</p></section> : null}
+        {error ? <p ref={errorRef} tabIndex={-1} role="alert" className="mt-4 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 text-sm font-semibold text-red-700">{error}</p> : null}
         <div className="mt-6 flex justify-between gap-3"><Button type="button" variant="secondary" onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0 || submitting}>Voltar</Button>{step < 2 ? <Button type="button" onClick={() => setStep((value) => value + 1)} disabled={!stepValid}>Continuar</Button> : <Button type="button" onClick={submit} disabled={submitting}>{submitting ? "Enviando…" : "Enviar observação"}</Button>}</div>
       </Card>
+      {officialGuidanceOpen ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" onKeyDown={keepFocusInsideGuidance}>
+        <div role="dialog" aria-modal="true" aria-labelledby="official-guidance-title" aria-describedby="official-guidance-description" className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
+          <h2 ref={guidanceTitleRef} tabIndex={-1} id="official-guidance-title" className="rounded text-2xl font-semibold text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">{officialGuidanceCopy.title}</h2>
+          <div id="official-guidance-description" className="mt-4 space-y-4 text-sm leading-6 text-slate-700"><p>{officialGuidanceCopy.notice}</p><p className="font-semibold text-slate-900">{officialGuidanceCopy.explanation}</p></div>
+          {officialGuidanceDecision === "official_channel_also" ? <div className="mt-6 space-y-4">
+            <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-semibold">Comunicação oficial independente</p><p className="mt-1">Use o canal oficial aplicável. O registro descritivo no VetAlert continua disponível e não será encaminhado automaticamente a nenhuma instituição.</p></div>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              {officialChannelUrl ? <a ref={officialLinkRef} href={officialChannelUrl} target="_blank" rel="noopener noreferrer" className={officialLinkStyles}>Abrir canal oficial</a> : null}
+              <button ref={guidanceVetAlertContinueRef} type="button" onClick={continueAfterOfficialDecision} className={officialContinueStyles}>Continuar registro no VetAlert</button>
+            </div>
+          </div> : <div className="mt-6 space-y-4">
+            <p className="font-semibold text-slate-900">{officialGuidanceCopy.question}</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+              {officialChannelUrl ? <a ref={officialLinkRef} href={officialChannelUrl} target="_blank" rel="noopener noreferrer" className={officialLinkStyles}>Abrir canal oficial</a> : null}
+              <button ref={guidanceOfficialRef} type="button" onClick={chooseOfficialChannelAlso} className={officialStopStyles}>Sim — comunicar também ao canal oficial</button>
+              <button ref={guidanceContinueRef} type="button" onClick={continueObservationalRecord} className={officialContinueStyles}>Não — continuar registro observacional</button>
+            </div>
+          </div>}
+        </div>
+      </div> : null}
     </div>
   );
 }

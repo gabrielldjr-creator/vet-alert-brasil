@@ -1,5 +1,7 @@
 # Relatório de prontidão da reconstrução paralela V2
 
+> Relatório histórico anterior à nota técnica fail-closed e ao município obrigatório. Desde 7 de setembro de 2026, a única entrada textual V2 é `technical-note-v1`, curta, versionada, restrita ao registro protegido e excluída de SAPSA/exportações. Consulte `docs/v2-technical-note-and-municipality.md` e o relatório release-candidate atualizado.
+
 Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 
 > Atualização da fase seguinte: a validação com Firebase Emulator e Chromium foi concluída. O resultado detalhado e mais recente está em `docs/v2-validation-report.md`; ele substitui as pendências de emulador/browser registradas na primeira versão deste documento.
@@ -8,7 +10,7 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 
 - Auditoria de código e metadados, inventário do repositório e plano de migração criados antes da implementação.
 - Intake V2 isolado, desativado por padrão e sem escrita em `alerts`.
-- Boas-vindas, explicação de confiança/uso, configuração mínima e registro em três etapas, sem texto livre.
+- Boas-vindas, explicação de confiança/uso, configuração mínima e registro em três etapas; a única nota é curta, opcional e fail-closed.
 - Schema canônico estrito validado no cliente e no servidor; unknown fields e campos de identidade/comerciais são rejeitados.
 - Metadados, rate control, suspeita de duplicidade e auditoria gerados no servidor; observações suspeitas são preservadas.
 - Coleções V2 bloqueadas ao Firebase Client SDK; escrita e leitura bruta somente via Admin SDK.
@@ -23,7 +25,7 @@ Data: 2026-09-05. Branch: `codex/vetalert-v2-reconstruction`.
 |---|---|---|
 | Contrato legado | PASS | Quatro arquivos protegidos têm hashes fixos e permanecem byte a byte iguais; rotas, required checks, `alerts` e redirects testados estaticamente. |
 | Feature flag | PASS | Ausente/false por padrão; só `true` habilita V2. Nenhuma configuração Vercel foi alterada. |
-| Schema e privacidade V2 | PASS | Allowlist estrita, sem texto livre, identidade, empresa, marca/fabricante, GPS/IP ou metadados forjáveis. |
+| Schema e privacidade V2 | PASS | Allowlist estrita; nota opcional limitada e fail-closed; identidade, empresa, marca/fabricante, GPS/IP e metadados forjáveis continuam proibidos. |
 | Integridade | PASS no código | ID/timestamps/source/flags server-side; HMAC; duplicate/rate flags sem exclusão. Requer credenciais e secret operacionais. |
 | SAPSA/RBAC | PASS no código | Papéis `sapsa_analyst`/`admin`, dados agregados e coleções raw client-denied. Claims/IAM reais ainda precisam de teste em ambiente controlado. |
 | Small-cell/export | PASS | Células menores que 5 não são exportadas; CSV não contém IDs, município individual, timestamp exato, UID ou digest. |

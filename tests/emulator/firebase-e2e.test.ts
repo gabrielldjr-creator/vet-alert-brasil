@@ -10,6 +10,7 @@ process.env.VETALERT_V2_ENABLED = "true";
 process.env.VETALERT_V2_INTEGRITY_SECRET = "emulator-only-secret-with-at-least-32-chars";
 process.env.VETALERT_V2_MAX_SUBMISSIONS = "2";
 process.env.VETALERT_V2_MINIMUM_CELL = "5";
+process.env.VETALERT_V2_INTEGRITY_KEY_VERSION = "emulator-key-2026-09";
 
 const projectId = "demo-vetalert-v2";
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
@@ -37,6 +38,8 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
   const { GET: loadSummary } = await import("../../app/api/v2/sapsa/summary/route");
   const { GET: exportSummary } = await import("../../app/api/v2/sapsa/export/route");
   const { V2_CONSENT_VERSION } = await import("../../lib/v2/config");
+  const { ECONOMIC_OPERATIONAL_CONTEXT_VERSION } = await import("../../lib/v2/schema");
+  const { TECHNICAL_NOTE_DICTIONARY_VERSION, TECHNICAL_NOTE_POLICY_VERSION, TECHNICAL_NOTE_SCHEMA_VERSION } = await import("../../lib/v2/technical-note");
 
   const createActor = async (role?: string) => {
     const user = await getAdminAuth().createUser({});
@@ -72,20 +75,63 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
     }
   });
 
-  const valid = (municipalityCode: string, overrides: Record<string, unknown> = {}) => ({ territory: { stateCode: "SC", municipalityCode }, species: "bovinos", signalGroup: "respiratorio", observedPattern: "manifestacao_respiratoria_observada", animalCountBand: "2_5", attentionLevel: "observed", observationPeriod: "ultimos_7d", consentVersion: V2_CONSENT_VERSION, ...overrides });
+  const economicOperationalContext = {
+    schemaVersion: ECONOMIC_OPERATIONAL_CONTEXT_VERSION,
+    accessToVeterinaryCare: "delayed",
+    accessToNecessaryInputsOrServices: "limited",
+    abilityToImplementPreventiveMeasures: "not_limited",
+    logisticalOrFinancialPressureAffectingCare: "observed",
+  } as const;
+  const valid = (municipalityCode: string, overrides: Record<string, unknown> = {}) => ({ territory: { stateCode: "SC", municipalityCode }, species: "bovinos", signalGroup: "respiratorio", observedPattern: "manifestacao_respiratoria_observada", animalCountBand: "2_5", attentionLevel: "observed", observationPeriod: "ultimos_7d", economicOperationalContext, consentVersion: V2_CONSENT_VERSION, ...overrides });
   const post = (token: string | undefined, body: unknown) => submitObservation(new Request("http://localhost/api/v2/observations", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) }));
 
   await t.test("authentication and strict server validation reject unauthorized or unsafe requests", async () => {
     assert.equal((await post(undefined, valid("4205407"))).status, 401);
     assert.equal((await post(veterinarian.token, { species: "bovinos" })).status, 400);
-    for (const prohibited of [{ name: "Pessoa" }, { crmv: "123" }, { productSold: "Produto" }, { notes: "texto livre" }, { submissionId: "forged" }]) {
+    for (const prohibited of [{ name: "Pessoa" }, { crmv: "123" }, { productSold: "Produto" }, { notes: "texto livre" }, { submissionId: "forged" }, { income: "1000" }, { creditScore: "900" }, { diagnosis: "forged" }, { suspeitaClinica: true }, { outbreak: true }, { notification: true }, { officialGuidanceDecision: "yes" }, { reportableSuspicion: true }, { notificationDecision: "official" }]) {
       const response = await post(veterinarian.token, { ...valid("4205407"), ...prohibited });
       assert.equal(response.status, 400, JSON.stringify(prohibited));
     }
+    for (const economicContextOverride of [{ income: "1000" }, { producer: "Pessoa" }, { notes: "texto" }, { accessToVeterinaryCare: "sometimes" }, { schemaVersion: "economic-operational-context-v0" }]) {
+      const response = await post(veterinarian.token, valid("4205407", { economicOperationalContext: { ...economicOperationalContext, ...economicContextOverride } }));
+      assert.equal(response.status, 400, JSON.stringify(economicContextOverride));
+    }
+    assert.equal((await post(veterinarian.token, { ...valid("4205407"), territory: { stateCode: "SC" } })).status, 400);
+    assert.equal((await post(veterinarian.token, valid("4106902"))).status, 400);
+
+    const collectionsThatMustNotChange = ["veterinaryObservationsV2", "submissionIntegrityV2", "auditLogsV2", "alerts"];
+    const collectionSizesBeforeUnsafeNotes = await Promise.all(collectionsThatMustNotChange.map((collection) => getAdminFirestore().collection(collection).get().then((snapshot) => snapshot.size)));
+    const sapsaBeforeUnsafeNotes = await (await loadSummary(new Request("http://localhost/api/v2/sapsa/summary", { headers: { Authorization: `Bearer ${analyst.token}` } }))).text();
+    for (const text of [
+      "Animais apresentam alteração na empresa Zoetis.",
+      "Animais apresentam resposta do fabricante Bayer.",
+      "Animais apresentam melhora com a marca Bravecto.",
+      "Animais apresentam resposta após Draxxin.",
+      "Animais apresentam alteração. CRMV-SC 1234.",
+      "Animais apresentam alteração e contato 48999999999.",
+      "Animais apresentam alteração; contato vet@example.com.",
+      "Animais apresentam alteração em https://example.com.",
+      "Animais apresentam alteração na Fazenda Bela Vista.",
+    ]) {
+      const response = await post(veterinarian.token, valid("4205407", { technicalNote: { schemaVersion: TECHNICAL_NOTE_SCHEMA_VERSION, text } }));
+      const responseText = await response.text();
+      assert.equal(response.status, 400, text);
+      assert.doesNotMatch(responseText, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"));
+      assert.doesNotMatch(responseText, /Zoetis|Bayer|Bravecto|Draxxin|CRMV|48999999999|example\.com|Bela Vista/i);
+    }
+    const collectionSizesAfterUnsafeNotes = await Promise.all(collectionsThatMustNotChange.map((collection) => getAdminFirestore().collection(collection).get().then((snapshot) => snapshot.size)));
+    assert.deepEqual(collectionSizesAfterUnsafeNotes, collectionSizesBeforeUnsafeNotes);
+    const sapsaAfterUnsafeNotes = await (await loadSummary(new Request("http://localhost/api/v2/sapsa/summary", { headers: { Authorization: `Bearer ${analyst.token}` } }))).text();
+    assert.equal(sapsaAfterUnsafeNotes, sapsaBeforeUnsafeNotes);
+    const malformed = await submitObservation(new Request("http://localhost/api/v2/observations", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${veterinarian.token}` }, body: "{" }));
+    assert.equal(malformed.status, 400);
+    assert.equal(malformed.headers.get("cache-control"), "private, no-store");
+    const wrongContentType = await submitObservation(new Request("http://localhost/api/v2/observations", { method: "POST", headers: { "Content-Type": "text/plain" }, body: "{}" }));
+    assert.equal(wrongContentType.status, 415);
   });
 
   await t.test("valid submission receives immutable server metadata; duplicates and rate bursts are preserved and flagged", async () => {
-    const first = await post(veterinarian.token, valid("4205407"));
+    const first = await post(veterinarian.token, valid("4205407", { technicalNote: { schemaVersion: TECHNICAL_NOTE_SCHEMA_VERSION, text: "Animais apresentam dificuldade de locomoção no período recente." } }));
     const firstText = await first.text();
     assert.equal(first.status, 201, firstText);
     const firstResult = JSON.parse(firstText) as { submissionId: string; accepted: boolean; reviewRequired: boolean };
@@ -96,14 +142,33 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
     assert.equal(observation.schemaVersion, 2);
     assert.equal(observation.sourceChannel, "vetalert_v2");
     assert.equal(observation.integrityStatus, "accepted");
-    for (const prohibited of ["uid", "name", "crmv", "email", "ip", "userAgent"]) assert.equal(Object.hasOwn(observation, prohibited), false, prohibited);
+    assert.deepEqual(observation.economicOperationalContext, economicOperationalContext);
+    assert.deepEqual(observation.technicalNote, {
+      schemaVersion: TECHNICAL_NOTE_SCHEMA_VERSION,
+      text: "Animais apresentam dificuldade de locomoção no período recente.",
+      validationPolicyVersion: TECHNICAL_NOTE_POLICY_VERSION,
+      dictionaryVersion: TECHNICAL_NOTE_DICTIONARY_VERSION,
+    });
+    for (const client of [
+      rulesEnvironment.unauthenticatedContext().firestore(),
+      rulesEnvironment.authenticatedContext(veterinarian.uid, { role: "veterinarian" }).firestore(),
+      rulesEnvironment.authenticatedContext(analyst.uid, { role: "sapsa_analyst" }).firestore(),
+      rulesEnvironment.authenticatedContext(administrator.uid, { role: "admin" }).firestore(),
+    ]) await assertFails(getDoc(doc(client, "veterinaryObservationsV2", firstResult.submissionId)));
+    for (const prohibited of ["uid", "name", "crmv", "email", "ip", "userAgent", "officialGuidanceDecision", "reportableSuspicion", "notificationDecision", "disease", "diagnosis", "suspicion", "notification"]) assert.equal(Object.hasOwn(observation, prohibited), false, prohibited);
 
     const integrity = (await getAdminFirestore().collection("submissionIntegrityV2").doc(firstResult.submissionId).get()).data()!;
     assert.match(integrity.originDigest, /^[a-f0-9]{64}$/);
     assert.notEqual(integrity.originDigest, veterinarian.uid);
     assert.match(integrity.fingerprint, /^[a-f0-9]{64}$/);
+    assert.equal(integrity.integrityKeyVersion, "emulator-key-2026-09");
+    assert.equal(integrity.policyVersion, "integrity-v2-3");
+    assert.doesNotMatch(JSON.stringify(integrity), /technicalNote|dificuldade de locomoção/i);
+    const acceptedAudit = await getAdminFirestore().collection("auditLogsV2").where("submissionId", "==", firstResult.submissionId).get();
+    assert.equal(acceptedAudit.size, 1);
+    assert.doesNotMatch(JSON.stringify(acceptedAudit.docs[0].data()), /technicalNote|dificuldade de locomoção/i);
 
-    const duplicate = await post(veterinarian.token, valid("4205407"));
+    const duplicate = await post(veterinarian.token, valid("4205407", { economicOperationalContext: { ...economicOperationalContext, accessToVeterinaryCare: "adequate" } }));
     const duplicateResult = await duplicate.json() as { submissionId: string; reviewRequired: boolean };
     assert.equal(duplicate.status, 201);
     assert.equal(duplicateResult.reviewRequired, true);
@@ -116,6 +181,26 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
     assert.equal(burstResult.reviewRequired, true);
     assert.equal((await getAdminFirestore().collection("submissionIntegrityV2").doc(burstResult.submissionId).get()).data()!.rateLimitExceeded, true);
     assert.equal((await getAdminFirestore().collection("veterinaryObservationsV2").doc(burstResult.submissionId).get()).exists, true);
+  });
+
+  await t.test("both transient warning decisions persist the same descriptive contract without storing the decision", async () => {
+    const scenarios = [
+      { transientDecision: "yes", municipalityCode: "4216602", attentionLevel: "elevated" },
+      { transientDecision: "no", municipalityCode: "4204202", attentionLevel: "urgent" },
+    ] as const;
+    for (const scenario of scenarios) {
+      const actor = await createActor("veterinarian");
+      const payload = valid(scenario.municipalityCode, { attentionLevel: scenario.attentionLevel });
+      assert.equal(Object.hasOwn(payload, "officialGuidanceDecision"), false, scenario.transientDecision);
+      const response = await post(actor.token, payload);
+      const result = await response.json() as { submissionId: string };
+      assert.equal(response.status, 201, scenario.transientDecision);
+      const persisted = (await getAdminFirestore().collection("veterinaryObservationsV2").doc(result.submissionId).get()).data()!;
+      assert.equal(persisted.observedPattern, "manifestacao_respiratoria_observada");
+      for (const prohibited of ["officialGuidanceDecision", "reportableSuspicion", "notificationDecision", "disease", "diagnosis", "suspicion", "notification"]) {
+        assert.equal(Object.hasOwn(persisted, prohibited), false, `${scenario.transientDecision}:${prohibited}`);
+      }
+    }
   });
 
   await t.test("a missing HMAC secret fails closed without persisting an observation", async () => {
@@ -150,11 +235,19 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
       const response = await loadSummary(new Request("http://localhost/api/v2/sapsa/summary", { headers: { Authorization: `Bearer ${actor.token}` } }));
       assert.equal(response.status, 200);
       const text = await response.text();
-      assert.doesNotMatch(text, /submissionId|originDigest|fingerprint|receivedAt|municipalityCode|legacy-contract-e2e/);
-      const summary = JSON.parse(text) as { cells: Array<{ species: string; observationCount: number }>; suppressedCellCount: number };
+      assert.doesNotMatch(text, /submissionId|originDigest|fingerprint|receivedAt|municipalityCode|technicalNote|dificuldade de locomoção|legacy-contract-e2e/);
+      assert.doesNotMatch(text, /income|debt|creditScore|riskScore|ranking|commercialDecision/);
+      const summary = JSON.parse(text) as { cells: Array<{ species: string; observationCount: number; sourceChannelCount: number; economicOperationalContextSummary?: { moduleVersion: string; observationCount: number; accessToVeterinaryCare: Record<string, number> } }>; suppressedCellCount: number; methodology: { version: string; scientificallyValidated: boolean } };
       assert.equal(summary.cells.some((cell) => cell.species === "bovinos" && cell.observationCount >= 5), true);
+      assert.equal(summary.cells.every((cell) => cell.sourceChannelCount >= 1), true);
       assert.equal(summary.cells.some((cell) => cell.species === "equinos"), false);
+      const bovineCell = summary.cells.find((cell) => cell.species === "bovinos");
+      assert.equal(bovineCell?.economicOperationalContextSummary?.moduleVersion, ECONOMIC_OPERATIONAL_CONTEXT_VERSION);
+      assert.equal((bovineCell?.economicOperationalContextSummary?.observationCount ?? 0) >= 5, true);
+      assert.equal((bovineCell?.economicOperationalContextSummary?.accessToVeterinaryCare.delayed ?? 0) >= 5, true);
       assert.ok(summary.suppressedCellCount >= 1);
+      assert.equal(summary.methodology.version, "sapsa-v2-exploratory-3");
+      assert.equal(summary.methodology.scientificallyValidated, false);
     }
   });
 
@@ -168,12 +261,13 @@ test("Firebase Emulator validates legacy, V2, RBAC, integrity, aggregation and e
       assert.match(response.headers.get("content-type") ?? "", /text\/csv/);
       const csv = await response.text();
       assert.match(csv, /stateCode,species,signalGroup,observationCount/);
-      assert.doesNotMatch(csv, /submissionId|municipalityCode|receivedAt|uid|Digest|fingerprint/);
+      assert.doesNotMatch(csv, /submissionId|municipalityCode|receivedAt|uid|Digest|fingerprint|technicalNote|dificuldade de locomoção|income|debt|creditScore|riskScore|ranking/);
     }
     const exports = await getAdminFirestore().collection("auditLogsV2").where("event", "==", "aggregate.exported").get();
     assert.equal(exports.size, 2);
     for (const entry of exports.docs) {
       assert.match(entry.get("actorDigest"), /^[a-f0-9]{64}$/);
+      assert.equal(entry.get("integrityKeyVersion"), "emulator-key-2026-09");
       assert.equal(entry.get("rowCount") >= 1, true);
     }
   });

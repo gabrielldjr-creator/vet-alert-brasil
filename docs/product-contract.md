@@ -4,7 +4,7 @@
 
 Todos os dias, veterinários atendem pequenos produtores em diferentes regiões do Brasil. Muitas observações importantes terminam na visita e não chegam a uma visão territorial. O VetAlert é o local onde o veterinário registra uma observação estruturada. O SAPSA reúne registros por território, espécie e período. Quando sinais semelhantes convergem, o SAPSA apresenta um padrão para revisão e ação técnica.
 
-O desenho pode operar em diferentes regiões, mas não comprova cobertura nacional. O intake V2 deve ser curto, progressivo, mobile-first, utilizável por teclado e sem texto livre. O nível de atenção é percepção do profissional, não classificação automática.
+O desenho pode operar em diferentes regiões, mas não comprova cobertura nacional. O intake V2 deve ser curto, progressivo, mobile-first e utilizável por teclado. A nota técnica opcional é limitada, fail-closed e isolada das análises; não é um campo livre arbitrário. O nível de atenção é percepção do profissional, não classificação automática.
 
 ## Separação
 
